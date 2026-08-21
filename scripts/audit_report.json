@@ -1,0 +1,484 @@
+{
+  "timestamp": "2026-08-21T06:10:32.043Z",
+  "total": 68,
+  "passed": 68,
+  "failed": 0,
+  "results": [
+    {
+      "suite": "Public Pages",
+      "name": "Home Page",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 350
+    },
+    {
+      "suite": "Public Pages",
+      "name": "Shop / Catalog Page",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 62
+    },
+    {
+      "suite": "Public Pages",
+      "name": "Catalog Download Page",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 17
+    },
+    {
+      "suite": "Public Pages",
+      "name": "Cart Page",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 10
+    },
+    {
+      "suite": "Public Pages",
+      "name": "Checkout Page",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 11
+    },
+    {
+      "suite": "Public Pages",
+      "name": "RFQ Quote Request Page",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 8
+    },
+    {
+      "suite": "Public Pages",
+      "name": "Order Tracking Page",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 8
+    },
+    {
+      "suite": "Public Pages",
+      "name": "Login Page",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 7
+    },
+    {
+      "suite": "Public Pages",
+      "name": "Register Page",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 9
+    },
+    {
+      "suite": "Public Pages",
+      "name": "My Account Page",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 8
+    },
+    {
+      "suite": "Public Pages",
+      "name": "Account Orders",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 9
+    },
+    {
+      "suite": "Public Pages",
+      "name": "Account Quotes",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 7
+    },
+    {
+      "suite": "Public Pages",
+      "name": "About Us Page",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 23
+    },
+    {
+      "suite": "Public Pages",
+      "name": "Contact Us Page",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 13
+    },
+    {
+      "suite": "Public Pages",
+      "name": "FAQ Page",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 31
+    },
+    {
+      "suite": "Public Pages",
+      "name": "Privacy Policy Page",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 20
+    },
+    {
+      "suite": "Public Pages",
+      "name": "Terms of Service Page",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 17
+    },
+    {
+      "suite": "Public Pages",
+      "name": "Shipping Policy Page",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 17
+    },
+    {
+      "suite": "Public Pages",
+      "name": "Returns Policy Page",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 18
+    },
+    {
+      "suite": "Public Pages",
+      "name": "Manufacturing Page",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 10
+    },
+    {
+      "suite": "Public Pages",
+      "name": "Quality Assurance Page",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 8
+    },
+    {
+      "suite": "Public Pages",
+      "name": "Wholesale Inquiry Page",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 22
+    },
+    {
+      "suite": "Public Pages",
+      "name": "Certificates Page",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 8
+    },
+    {
+      "suite": "Public Pages",
+      "name": "Blog Page",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 7
+    },
+    {
+      "suite": "Public Pages",
+      "name": "Robots.txt",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 21
+    },
+    {
+      "suite": "Public Pages",
+      "name": "Sitemap.xml",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 9
+    },
+    {
+      "suite": "Admin Pages",
+      "name": "Admin Dashboard Overview",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 7
+    },
+    {
+      "suite": "Admin Pages",
+      "name": "Admin Products Management",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 10
+    },
+    {
+      "suite": "Admin Pages",
+      "name": "Admin Categories Management",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 7
+    },
+    {
+      "suite": "Admin Pages",
+      "name": "Admin Orders Management",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 6
+    },
+    {
+      "suite": "Admin Pages",
+      "name": "Admin RFQ Quotes Management",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 8
+    },
+    {
+      "suite": "Admin Pages",
+      "name": "Admin Customers Management",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 6
+    },
+    {
+      "suite": "Admin Pages",
+      "name": "Admin Reviews Management",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 6
+    },
+    {
+      "suite": "Admin Pages",
+      "name": "Admin Homepage CMS",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 5
+    },
+    {
+      "suite": "Admin Pages",
+      "name": "Admin Banners CMS",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 6
+    },
+    {
+      "suite": "Admin Pages",
+      "name": "Admin Brands CMS",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 6
+    },
+    {
+      "suite": "Admin Pages",
+      "name": "Admin Media Library",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 6
+    },
+    {
+      "suite": "Admin Pages",
+      "name": "Admin Navigation Menus",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 5
+    },
+    {
+      "suite": "Admin Pages",
+      "name": "Admin CMS Pages",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 6
+    },
+    {
+      "suite": "Admin Pages",
+      "name": "Admin SEO Management",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 5
+    },
+    {
+      "suite": "Admin Pages",
+      "name": "Admin Settings & WhatsApp",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 6
+    },
+    {
+      "suite": "Admin Pages",
+      "name": "Admin Coupons Management",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 6
+    },
+    {
+      "suite": "Storefront API",
+      "name": "GET /api/products (List products)",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 60
+    },
+    {
+      "suite": "Public Pages",
+      "name": "Product Detail Page (/product/fbe43fd8-94c4-40f0-b78b-803577feb281)",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 51
+    },
+    {
+      "suite": "Storefront API",
+      "name": "GET /api/products/fbe43fd8-94c4-40f0-b78b-803577feb281 (Single Product API)",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 12
+    },
+    {
+      "suite": "Storefront API",
+      "name": "GET /api/products with search & filters",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 10
+    },
+    {
+      "suite": "Storefront API",
+      "name": "GET /api/categories (Categories List)",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 9
+    },
+    {
+      "suite": "Storefront API",
+      "name": "GET /api/categories/9e6fccd5-e01f-46d6-b450-a4106cd757d8",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 9
+    },
+    {
+      "suite": "Storefront API",
+      "name": "GET /api/reviews",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 9
+    },
+    {
+      "suite": "Storefront API",
+      "name": "POST /api/rfq (Submit Quote Request)",
+      "passed": true,
+      "statusCode": 201,
+      "durationMs": 26
+    },
+    {
+      "suite": "Storefront API",
+      "name": "POST /api/orders (Checkout Submission)",
+      "passed": true,
+      "statusCode": 201,
+      "durationMs": 19
+    },
+    {
+      "suite": "Admin API",
+      "name": "GET /api/admin/analytics",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 36
+    },
+    {
+      "suite": "Admin API",
+      "name": "GET /api/admin/settings",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 9
+    },
+    {
+      "suite": "Admin API",
+      "name": "PUT /api/admin/settings (Update test)",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 14
+    },
+    {
+      "suite": "Admin API",
+      "name": "GET /api/admin/homepage",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 7
+    },
+    {
+      "suite": "Admin API",
+      "name": "GET /api/admin/banners",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 7
+    },
+    {
+      "suite": "Admin API",
+      "name": "GET /api/admin/brands",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 7
+    },
+    {
+      "suite": "Admin API",
+      "name": "GET /api/admin/customers",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 10
+    },
+    {
+      "suite": "Admin API",
+      "name": "GET /api/admin/orders",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 9
+    },
+    {
+      "suite": "Admin API",
+      "name": "GET /api/admin/rfq",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 9
+    },
+    {
+      "suite": "Admin API",
+      "name": "GET /api/admin/reviews",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 9
+    },
+    {
+      "suite": "Admin API",
+      "name": "GET /api/admin/media",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 9
+    },
+    {
+      "suite": "Admin API",
+      "name": "GET /api/admin/menus",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 7
+    },
+    {
+      "suite": "Admin API",
+      "name": "GET /api/admin/pages",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 7
+    },
+    {
+      "suite": "Admin API",
+      "name": "GET /api/admin/seo",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 8
+    },
+    {
+      "suite": "Admin API",
+      "name": "GET /api/admin/coupons",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 8
+    },
+    {
+      "suite": "Admin API",
+      "name": "GET /api/admin/products/export",
+      "passed": true,
+      "statusCode": 200,
+      "durationMs": 21
+    },
+    {
+      "suite": "Data Integrity",
+      "name": "Product Images Integrity Check",
+      "passed": true,
+      "durationMs": 10,
+      "details": "Total products: 100. Missing images: 0"
+    }
+  ]
+}

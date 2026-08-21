@@ -1,0 +1,326 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String     @id @default(uuid())
+  name         String
+  email        String     @unique
+  password     String
+  role         String     @default("CUSTOMER") // "SUPERADMIN", "ADMIN", "STAFF", "CUSTOMER"
+  phone        String?
+  whatsapp     String?
+  company      String?
+  country      String?
+  address      String?
+  city         String?
+  zipCode      String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  orders       Order[]
+  rfqs         Rfq[]
+  reviews      Review[]
+  wishlists    Wishlist[]
+}
+
+model Category {
+  id             String     @id @default(uuid())
+  name           String
+  slug           String     @unique
+  description    String?
+  image          String?
+  icon           String?
+  seoTitle       String?
+  seoDescription String?
+  isActive       Boolean    @default(true)
+  parentId       String?
+  parent         Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  subcategories  Category[] @relation("CategoryHierarchy")
+  products       Product[]
+  orderIndex     Int        @default(0)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+}
+
+model Brand {
+  id          String    @id @default(uuid())
+  name        String
+  slug        String    @unique
+  logo        String?
+  description String?
+  websiteUrl  String?
+  isActive    Boolean   @default(true)
+  orderIndex  Int       @default(0)
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Product {
+  id             String        @id @default(uuid())
+  name           String
+  slug           String        @unique
+  productCode    String        @unique // unique catalog identifier, e.g. KSI-1931
+  sku            String        @unique
+  shortDescription String?
+  description    String?
+  specifications String?       // JSON string or long text storing specifications
+  material       String?
+  size           String?
+  finish         String?
+  weight         String?
+  unit           String?       @default("Piece") // Piece, Pair, Set, Box, Kit
+  color          String?
+  tags           String?       // Comma separated tags
+  images         String        // Comma-separated or JSON list of image paths/URLs
+  videoUrl       String?
+  stock          Int           @default(100)
+  moq            Int           @default(1)
+  singlePrice    Float         @default(0.0)
+  salePrice      Float?
+  wholesalePrice Float?
+  isFeatured     Boolean       @default(false)
+  isNew          Boolean       @default(false)
+  isBestseller   Boolean       @default(false)
+  isSale         Boolean       @default(false)
+  orderIndex     Int           @default(0)
+  status         String        @default("ACTIVE") // "ACTIVE", "DRAFT", "DISCONTINUED"
+  seoTitle       String?
+  seoDescription String?
+  seoKeywords    String?
+  categoryId     String?
+  category       Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  brandId        String?
+  brand          Brand?        @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  pricingTiers   PricingTier[]
+  orderItems     OrderItem[]
+  rfqItems       RfqItem[]
+  reviews        Review[]
+  wishlists      Wishlist[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+model PricingTier {
+  id           String   @id @default(uuid())
+  productId    String
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  minQuantity  Int
+  maxQuantity  Int?     // null means "and above"
+  pricePerUnit Float
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Order {
+  id              String      @id @default(uuid())
+  orderNumber     String      @unique // e.g. ORD-2026-10001
+  userId          String?
+  user            User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  customerName    String
+  customerEmail   String
+  customerPhone   String?
+  customerWhatsapp String?
+  companyName     String?
+  shippingAddress String      // JSON string with address details
+  subtotal        Float
+  discount        Float       @default(0.0)
+  shippingCost    Float       @default(0.0)
+  tax             Float       @default(0.0)
+  total           Float
+  status          String      @default("PENDING") // PENDING, CONFIRMED, PROCESSING, PACKED, SHIPPED, DELIVERED, CANCELLED, RETURNED
+  paymentMethod   String      // "CARD", "OFFLINE", "WHATSAPP"
+  paymentStatus   String      @default("UNPAID") // PAID, UNPAID
+  trackingNumber  String?
+  notes           String?
+  items           OrderItem[]
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+model OrderItem {
+  id           String   @id @default(uuid())
+  orderId      String
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId    String?
+  product      Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productCode  String
+  productName  String
+  quantity     Int
+  pricePerUnit Float
+  totalPrice   Float
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Rfq {
+  id            String    @id @default(uuid())
+  rfqNumber     String    @unique // e.g. RFQ-2026-10001
+  userId        String?
+  user          User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name          String
+  company       String?
+  email         String
+  phone         String?
+  whatsapp      String?
+  country       String?
+  status        String    @default("NEW") // NEW, CONTACTED, QUOTED, NEGOTIATING, WON, LOST, COMPLETED
+  notes         String?
+  attachmentUrl String?
+  items         RfqItem[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model RfqItem {
+  id                     String   @id @default(uuid())
+  rfqId                  String
+  rfq                    Rfq      @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  productId              String?
+  product                Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productCode            String
+  productName            String
+  quantity               Int
+  requiredSize           String?
+  material               String?
+  finish                 String?
+  additionalRequirements String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+}
+
+model Review {
+  id         String   @id @default(uuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name       String
+  email      String
+  rating     Int
+  comment    String?
+  imageUrl   String?
+  isApproved Boolean  @default(false)
+  isFeatured Boolean  @default(false)
+  adminReply String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Wishlist {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model Coupon {
+  id             String    @id @default(uuid())
+  code           String    @unique
+  discountType   String    // "PERCENTAGE", "FIXED"
+  value          Float
+  minOrderValue  Float     @default(0.0)
+  maxDiscountAmount Float?
+  startDate      DateTime?
+  endDate        DateTime?
+  usageLimit     Int?
+  usageCount     Int       @default(0)
+  status         String    @default("ACTIVE")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model Banner {
+  id           String    @id @default(uuid())
+  title        String
+  subtitle     String?
+  badge        String?
+  buttonText   String?
+  buttonUrl    String?
+  secondaryButtonText String?
+  secondaryButtonUrl  String?
+  desktopImage String?
+  mobileImage  String?
+  position     String    @default("HERO_SLIDER") // HERO_SLIDER, PROMO_STRIP, MIDDLE_BANNER, FOOTER_BANNER, POPUP
+  startDate    DateTime?
+  endDate      DateTime?
+  isActive     Boolean   @default(true)
+  orderIndex   Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model HomepageSection {
+  id          String   @id @default(uuid())
+  sectionKey  String   @unique // hero, categories, trending_tweezers, shears_banner, grooming_tabs, shaving_banner, infinite_gallery, instagram, trust_badges, newsletter
+  title       String
+  subtitle    String?
+  badge       String?
+  content     String?  // Rich text description or JSON data
+  buttonText  String?
+  buttonUrl   String?
+  imageUrl    String?
+  isEnabled   Boolean  @default(true)
+  orderIndex  Int      @default(0)
+  config      String?  // JSON configuration
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model MenuItem {
+  id          String     @id @default(uuid())
+  title       String
+  url         String
+  menuType    String     @default("MAIN") // MAIN, CATEGORY, HEADER_TOP, FOOTER_COMPANY, FOOTER_INFO
+  parentId    String?
+  parent      MenuItem?  @relation("MenuHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children    MenuItem[] @relation("MenuHierarchy")
+  orderIndex  Int        @default(0)
+  target      String     @default("_self") // _self, _blank
+  badge       String?
+  isEnabled   Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model Page {
+  id             String   @id @default(uuid())
+  title          String
+  slug           String   @unique // about, contact, faq, terms, privacy, shipping, returns, wholesale, certificates, manufacturing, quality, custom-page-slug
+  content        String   // Markdown, HTML or JSON blocks
+  bannerImage    String?
+  seoTitle       String?
+  seoDescription String?
+  isPublished    Boolean  @default(true)
+  template       String   @default("STANDARD") // STANDARD, FULL_WIDTH, CONTACT, POLICY
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Media {
+  id        String   @id @default(uuid())
+  fileName  String
+  fileUrl   String   @unique
+  fileType  String   @default("image") // image, document, video
+  fileSize  Int      @default(0)
+  mimeType  String?
+  altText   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Setting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String   // JSON string or text value
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
