@@ -221,24 +221,77 @@ export default function AdminCategoriesPage() {
     }
   };
 
+  const compressClientImage = (file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new window.Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const maxDim = 1200;
+          if (width > height && width > maxDim) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else if (height > maxDim) {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', 0.85));
+            return;
+          }
+          resolve(e.target?.result as string);
+        };
+        img.onerror = () => resolve(e.target?.result as string);
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleUploadImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
     setUploadingImage(true);
-    const formData = new FormData();
-    formData.append('file', files[0]);
 
     try {
-      const res = await fetch('/api/upload', { method: 'POST', body: formData });
-      if (res.ok) {
-        const data = await res.json();
-        setImage(data.url || data.urls[0]);
+      const base64 = await compressClientImage(files[0]);
+      if (!base64) {
+        alert('Please select a valid image');
+        return;
       }
-    } catch (err) {
+
+      setImage(base64);
+
+      try {
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ images: [base64] })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.url || (data.urls && data.urls[0])) {
+            setImage(data.url || data.urls[0]);
+          }
+        }
+      } catch (netErr) {
+        console.warn('API category upload fallback to dataUrl:', netErr);
+      }
+    } catch (err: any) {
       console.error('Upload failed:', err);
+      alert('Upload failed: ' + (err?.message || 'Please try another file'));
     } finally {
       setUploadingImage(false);
+      e.target.value = '';
     }
   };
 
@@ -539,6 +592,11 @@ export default function AdminCategoriesPage() {
                     Media
                   </button>
                 </div>
+                {image && (
+                  <div className="w-16 h-16 rounded-xl bg-[#120a12] border border-white/10 overflow-hidden relative mt-2">
+                    <Image src={normalizeImageUrl(image)} alt="Preview" fill unoptimized sizes="64px" className="object-cover" />
+                  </div>
+                )}
               </div>
 
               <div>

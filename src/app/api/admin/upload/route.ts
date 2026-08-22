@@ -4,7 +4,6 @@ import db from '@/lib/db';
 import { broadcastRealtimeEvent } from '@/lib/realtime';
 import fs from 'fs';
 import path from 'path';
-import sharp from 'sharp';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,30 +40,6 @@ export async function POST(request: Request) {
 
     const uploadedUrls: string[] = [];
 
-    // Helper: compress image buffer using sharp
-    const compressImage = async (buf: Buffer, mime: string = 'image/jpeg'): Promise<{ buffer: Buffer; dataUrl: string; mimeType: string }> => {
-      try {
-        const compressed = await sharp(buf)
-          .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
-          .jpeg({ quality: 85, mozjpeg: true })
-          .toBuffer();
-        const base64 = compressed.toString('base64');
-        return {
-          buffer: compressed,
-          dataUrl: `data:image/jpeg;base64,${base64}`,
-          mimeType: 'image/jpeg'
-        };
-      } catch (sharpErr) {
-        console.warn('Sharp compression fallback to raw buffer:', sharpErr);
-        const base64 = buf.toString('base64');
-        return {
-          buffer: buf,
-          dataUrl: `data:${mime};base64,${base64}`,
-          mimeType: mime
-        };
-      }
-    };
-
     // 1. Handle Multipart Form Data
     if (contentType.includes('multipart/form-data')) {
       const formData = await request.formData();
@@ -98,12 +73,12 @@ export async function POST(request: Request) {
         const rawBuffer = Buffer.from(bytes);
         const mime = file.type || 'image/jpeg';
         const rawName = file.name || 'product_image.jpeg';
-
-        const { buffer, dataUrl } = await compressImage(rawBuffer, mime);
+        const base64 = rawBuffer.toString('base64');
+        const dataUrl = `data:${mime};base64,${base64}`;
 
         let finalUrl = dataUrl;
 
-        // On Vercel, always use compressed Data URL to prevent 404s
+        // On Vercel / Serverless, persist as Data URL to guarantee zero 404s
         if (isVercel || !isFileSystemWritable) {
           finalUrl = dataUrl;
           uploadedUrls.push(finalUrl);
@@ -114,8 +89,8 @@ export async function POST(request: Request) {
                 fileName: rawName,
                 fileUrl: finalUrl,
                 fileType: 'image',
-                fileSize: buffer.length,
-                mimeType: 'image/jpeg',
+                fileSize: rawBuffer.length,
+                mimeType: mime,
                 altText: rawName
               }
             });
@@ -132,7 +107,7 @@ export async function POST(request: Request) {
             const fileName = `${timestamp}_${randomSalt}_${baseName}${ext}`;
             const filePath = path.join(uploadDir, fileName);
 
-            fs.writeFileSync(filePath, buffer);
+            fs.writeFileSync(filePath, rawBuffer);
             finalUrl = `/products/${fileName}`;
             uploadedUrls.push(finalUrl);
 
@@ -142,15 +117,15 @@ export async function POST(request: Request) {
                 update: {
                   fileName: rawName,
                   altText: rawName,
-                  fileSize: buffer.length,
-                  mimeType: 'image/jpeg'
+                  fileSize: rawBuffer.length,
+                  mimeType: mime
                 },
                 create: {
                   fileName: rawName,
                   fileUrl: finalUrl,
                   fileType: 'image',
-                  fileSize: buffer.length,
-                  mimeType: 'image/jpeg',
+                  fileSize: rawBuffer.length,
+                  mimeType: mime,
                   altText: rawName
                 }
               });
@@ -184,17 +159,18 @@ export async function POST(request: Request) {
           continue;
         }
 
-        const matches = b64Data.match(/^data:image\/([a-zA-Z0-9]+);base64,(.+)$/);
-        if (!matches) continue;
+        const matches = b64Data.match(/^data:image\/([a-zA-Z0-9+]+);base64,(.+)$/);
+        if (!matches) {
+          uploadedUrls.push(b64Data);
+          continue;
+        }
 
         const ext = `.${matches[1] || 'jpeg'}`;
         const rawBuffer = Buffer.from(matches[2], 'base64');
-        const { buffer, dataUrl } = await compressImage(rawBuffer, `image/${matches[1] || 'jpeg'}`);
-
-        let finalUrl = dataUrl;
+        const mime = `image/${matches[1] || 'jpeg'}`;
+        const finalUrl = b64Data;
 
         if (isVercel || !isFileSystemWritable) {
-          finalUrl = dataUrl;
           uploadedUrls.push(finalUrl);
 
           try {
@@ -203,8 +179,8 @@ export async function POST(request: Request) {
                 fileName: `upload_${Date.now()}${ext}`,
                 fileUrl: finalUrl,
                 fileType: 'image',
-                fileSize: buffer.length,
-                mimeType: `image/${matches[1] || 'jpeg'}`,
+                fileSize: rawBuffer.length,
+                mimeType: mime,
                 altText: 'Uploaded Image'
               }
             });
@@ -218,25 +194,25 @@ export async function POST(request: Request) {
             const fileName = `${timestamp}_${randomSalt}_upload${ext}`;
             const filePath = path.join(uploadDir, fileName);
 
-            fs.writeFileSync(filePath, buffer);
-            finalUrl = `/products/${fileName}`;
-            uploadedUrls.push(finalUrl);
+            fs.writeFileSync(filePath, rawBuffer);
+            const publicUrl = `/products/${fileName}`;
+            uploadedUrls.push(publicUrl);
 
             try {
               await db.media.upsert({
-                where: { fileUrl: finalUrl },
+                where: { fileUrl: publicUrl },
                 update: {
                   fileName,
                   altText: fileName,
-                  fileSize: buffer.length,
-                  mimeType: `image/${matches[1] || 'jpeg'}`
+                  fileSize: rawBuffer.length,
+                  mimeType: mime
                 },
                 create: {
                   fileName,
-                  fileUrl: finalUrl,
+                  fileUrl: publicUrl,
                   fileType: 'image',
-                  fileSize: buffer.length,
-                  mimeType: `image/${matches[1] || 'jpeg'}`,
+                  fileSize: rawBuffer.length,
+                  mimeType: mime,
                   altText: fileName
                 }
               });
@@ -245,7 +221,6 @@ export async function POST(request: Request) {
             }
           } catch (writeErr: any) {
             console.warn('Local disk write failed, fallback to Data URL:', writeErr?.message);
-            finalUrl = dataUrl;
             uploadedUrls.push(finalUrl);
           }
         }
@@ -276,7 +251,7 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error('API Image Upload Server Error:', error);
     return NextResponse.json({ 
-      error: error.message || 'Failed to upload image file. Please try a different image format (JPEG/PNG/WebP).' 
+      error: error.message || 'Failed to upload image file.' 
     }, { status: 500 });
   }
 }
