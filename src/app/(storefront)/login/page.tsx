@@ -34,7 +34,12 @@ export default function LoginPage() {
     try {
       const result = await login(email, password);
       if (result.success) {
-        router.push('/account');
+        const role = result.user?.role;
+        if (role === 'SUPERADMIN' || role === 'ADMIN' || role === 'STAFF') {
+          router.push('/admin');
+        } else {
+          router.push('/account');
+        }
       } else {
         setError(result.error || 'Invalid credentials');
       }
@@ -51,8 +56,8 @@ export default function LoginPage() {
         
         {/* Header */}
         <div className="text-center space-y-2">
-          <h2 className="text-2xl font-bold tracking-tight">Customer Portal</h2>
-          <p className="text-xs text-white/50">Login to place orders, track shipments, and request custom quotations.</p>
+          <h2 className="text-2xl font-bold tracking-tight">Account Login</h2>
+          <p className="text-xs text-white/50">Login to place orders, track shipments, or access the dashboard.</p>
         </div>
 
         {error && (
@@ -103,13 +108,10 @@ export default function LoginPage() {
         </form>
 
         <div className="text-center text-xs text-white/40 border-t border-white/5 pt-4 space-y-2">
-          <p>Don't have a business account yet?</p>
+          <p>Don't have an account yet?</p>
           <Link href="/register" className="text-[#D6B36A] hover:underline font-bold">
             Create Business Account
           </Link>
-          <div className="bg-[#171017] border border-white/5 p-3 rounded mt-2 text-[10px] text-left leading-relaxed">
-            💡 **Demo Access**: Use `admin@lashtweezerslounge.com` with password `admin123` for Super Admin panel, or `customer@lashtweezerslounge.com` with `customer123` for Customer dashboard.
-          </div>
         </div>
 
       </div>
