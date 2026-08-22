@@ -40,22 +40,31 @@ const fallbackCategoryImages = [
   'WhatsApp Image 2026-08-18 at 12.28.22 AM.jpeg'
 ];
 
-export default async function HomePage() {
-  // Fetch category images from public/catagori dynamically
-  let categoryImages: string[] = [];
+let cachedCategoryGalleryImages: string[] | null = null;
+
+function getCachedCategoryImages(): string[] {
+  if (cachedCategoryGalleryImages && cachedCategoryGalleryImages.length > 0) {
+    return cachedCategoryGalleryImages;
+  }
   try {
     const catagoriDir = path.join(process.cwd(), 'public', 'catagori');
     if (fs.existsSync(catagoriDir)) {
-      categoryImages = fs.readdirSync(catagoriDir)
+      const files = fs.readdirSync(catagoriDir)
         .filter(f => f.endsWith('.jpeg') || f.endsWith('.jpg') || f.endsWith('.png'));
+      if (files.length > 0) {
+        cachedCategoryGalleryImages = files;
+        return files;
+      }
     }
   } catch (err) {
-    console.error('Failed to read category images:', err);
+    // quiet fallback
   }
+  cachedCategoryGalleryImages = fallbackCategoryImages;
+  return fallbackCategoryImages;
+}
 
-  if (categoryImages.length === 0) {
-    categoryImages = fallbackCategoryImages;
-  }
+export default async function HomePage() {
+  const categoryImages = getCachedCategoryImages();
 
   // Fetch categories, products, banners & homepage section configuration in parallel
   let categories: any[] = [];

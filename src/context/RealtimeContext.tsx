@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { RealtimeEventType, RealtimeEventPayload } from '@/lib/realtime';
-import { Bell, CheckCircle2, Info, ShoppingCart, Sparkles, X, RefreshCw } from 'lucide-react';
+import { Bell, CheckCircle2, Info, ShoppingCart, Sparkles, X } from 'lucide-react';
 
 interface RealtimeToast {
   id: string;
@@ -23,14 +23,13 @@ interface RealtimeContextType {
 const RealtimeContext = createContext<RealtimeContextType | undefined>(undefined);
 
 export function RealtimeProvider({ children }: { children: React.ReactNode }) {
-  const [isConnected, setIsConnected] = useState(false);
+  const [isConnected, setIsConnected] = useState(true);
   const [lastEvent, setLastEvent] = useState<RealtimeEventPayload | null>(null);
   const [eventsHistory, setEventsHistory] = useState<RealtimeEventPayload[]>([]);
   const [toasts, setToasts] = useState<RealtimeToast[]>([]);
 
   const listenersRef = useRef<Map<string, { types: RealtimeEventType[] | 'ALL'; callback: (event: RealtimeEventPayload) => void }>>(new Map());
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
-  const eventSourceRef = useRef<EventSource | null>(null);
   const lastTimestampRef = useRef<number>(Date.now());
 
   // Dispatch event to internal subscribers and update state
@@ -96,7 +95,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // Broadcast across tabs if this came from SSE
+    // Broadcast across tabs if not already from broadcast channel
     if (!fromBroadcast && broadcastChannelRef.current) {
       try {
         broadcastChannelRef.current.postMessage(event);
@@ -130,11 +129,10 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // Initialize SSE & BroadcastChannel
+  // Initialize Native BroadcastChannel (Zero network overhead, 0ms latency cross-tab sync)
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    // 1. Setup BroadcastChannel for instant cross-tab sync
     if ('BroadcastChannel' in window) {
       try {
         const bc = new BroadcastChannel('ltl_realtime_channel');
@@ -149,78 +147,10 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // 2. Setup Server-Sent Events (SSE) stream
-    let es: EventSource | null = null;
-    let reconnectTimeout: NodeJS.Timeout | null = null;
-
-    const connectSSE = () => {
-      try {
-        es = new EventSource('/api/realtime/stream');
-        eventSourceRef.current = es;
-
-        es.onopen = () => {
-          setIsConnected(true);
-        };
-
-        es.onmessage = (e) => {
-          try {
-            const data = JSON.parse(e.data);
-            if (data.type === 'CONNECTED') {
-              setIsConnected(true);
-            } else {
-              handleIncomingEvent(data, false);
-            }
-          } catch (err) {
-            // Heartbeat or parse skip
-          }
-        };
-
-        es.onerror = () => {
-          setIsConnected(false);
-          es?.close();
-          // Attempt reconnect after 4 seconds
-          if (!reconnectTimeout) {
-            reconnectTimeout = setTimeout(() => {
-              reconnectTimeout = null;
-              connectSSE();
-            }, 4000);
-          }
-        };
-      } catch (err) {
-        setIsConnected(false);
-        if (!reconnectTimeout) {
-          reconnectTimeout = setTimeout(() => {
-            reconnectTimeout = null;
-            connectSSE();
-          }, 5000);
-        }
-      }
-    };
-
-    connectSSE();
-
-    // 3. Fallback smart polling interval for missed events
-    const pollInterval = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/realtime/events?since=${lastTimestampRef.current}`, { cache: 'no-store' });
-        if (res.ok) {
-          const json = await res.json();
-          if (json.events && Array.isArray(json.events) && json.events.length > 0) {
-            json.events.forEach((evt: RealtimeEventPayload) => {
-              handleIncomingEvent(evt, false);
-            });
-          }
-        }
-      } catch {
-        // quiet fallback
-      }
-    }, 6000);
-
     return () => {
-      if (reconnectTimeout) clearTimeout(reconnectTimeout);
-      clearInterval(pollInterval);
-      if (es) es.close();
-      if (broadcastChannelRef.current) broadcastChannelRef.current.close();
+      if (broadcastChannelRef.current) {
+        broadcastChannelRef.current.close();
+      }
     };
   }, [handleIncomingEvent]);
 
@@ -233,50 +163,52 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       {children}
 
       {/* Floating Live Real-Time Toast Alerts */}
-      <div className="fixed bottom-5 right-5 z-[9999] flex flex-col space-y-2.5 max-w-sm pointer-events-none">
-        {toasts.map((toast) => {
-          const isOrder = toast.type.includes('ORDER');
-          const isRfq = toast.type.includes('RFQ');
-          const isProduct = toast.type.includes('PRODUCT');
+      {toasts.length > 0 && (
+        <div className="fixed bottom-5 right-5 z-[9999] flex flex-col space-y-2.5 max-w-sm pointer-events-none">
+          {toasts.map((toast) => {
+            const isOrder = toast.type.includes('ORDER');
+            const isRfq = toast.type.includes('RFQ');
+            const isProduct = toast.type.includes('PRODUCT');
 
-          return (
-            <div
-              key={toast.id}
-              className="pointer-events-auto bg-[#170e17] text-white border border-[#C21875]/40 p-4 rounded-2xl shadow-2xl backdrop-blur-md animate-in slide-in-from-bottom-5 fade-in duration-300 flex items-start space-x-3 group"
-            >
-              <div className={`p-2 rounded-xl shrink-0 ${
-                isOrder 
-                  ? 'bg-emerald-500/20 text-emerald-400' 
-                  : isRfq 
-                  ? 'bg-amber-500/20 text-amber-400' 
-                  : isProduct 
-                  ? 'bg-sky-500/20 text-sky-400' 
-                  : 'bg-[#C21875]/20 text-[#C21875]'
-              }`}>
-                {isOrder ? <ShoppingCart size={18} /> : isRfq ? <Bell size={18} /> : <Sparkles size={18} />}
-              </div>
-
-              <div className="flex-1 min-w-0 pr-2">
-                <div className="flex items-center space-x-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-bold">Realtime Live</span>
-                </div>
-                <h4 className="text-xs font-bold text-white tracking-tight mt-0.5 truncate">{toast.title}</h4>
-                {toast.message && (
-                  <p className="text-[11px] text-white/70 line-clamp-2 mt-0.5 leading-snug">{toast.message}</p>
-                )}
-              </div>
-
-              <button
-                onClick={() => removeToast(toast.id)}
-                className="text-white/40 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
+            return (
+              <div
+                key={toast.id}
+                className="pointer-events-auto bg-[#170e17] text-white border border-[#C21875]/40 p-4 rounded-2xl shadow-2xl backdrop-blur-md animate-in slide-in-from-bottom-5 fade-in duration-300 flex items-start space-x-3 group"
               >
-                <X size={14} />
-              </button>
-            </div>
-          );
-        })}
-      </div>
+                <div className={`p-2 rounded-xl shrink-0 ${
+                  isOrder 
+                    ? 'bg-emerald-500/20 text-emerald-400' 
+                    : isRfq 
+                    ? 'bg-amber-500/20 text-amber-400' 
+                    : isProduct 
+                    ? 'bg-sky-500/20 text-sky-400' 
+                    : 'bg-[#C21875]/20 text-[#C21875]'
+                }`}>
+                  {isOrder ? <ShoppingCart size={18} /> : isRfq ? <Bell size={18} /> : <Sparkles size={18} />}
+                </div>
+
+                <div className="flex-1 min-w-0 pr-2">
+                  <div className="flex items-center space-x-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-bold">Live Synced</span>
+                  </div>
+                  <h4 className="text-xs font-bold text-white tracking-tight mt-0.5 truncate">{toast.title}</h4>
+                  {toast.message && (
+                    <p className="text-[11px] text-white/70 line-clamp-2 mt-0.5 leading-snug">{toast.message}</p>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => removeToast(toast.id)}
+                  className="text-white/40 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </RealtimeContext.Provider>
   );
 }

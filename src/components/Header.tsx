@@ -19,6 +19,9 @@ interface NavCategory {
   subcategories?: { id: string; name: string; slug: string }[];
 }
 
+let cachedNavCategories: NavCategory[] | null = null;
+let cachedStoreSettings: any = null;
+
 export default function Header() {
   const router = useRouter();
   const { user, logout } = useAuth();
@@ -30,14 +33,14 @@ export default function Header() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   
-  // Dynamic categories and settings from database
-  const [categories, setCategories] = useState<NavCategory[]>([]);
+  // Dynamic categories and settings from database with instant cached initialization
+  const [categories, setCategories] = useState<NavCategory[]>(() => cachedNavCategories || []);
   const [storeSettings, setStoreSettings] = useState<{
     announcementText?: string;
     whatsappNumber?: string;
     companyPhone?: string;
     instagramUrl?: string;
-  }>({
+  }>(() => cachedStoreSettings || {
     announcementText: 'OEM & Custom Private Label Manufacturing • Direct Factory Pricing',
     whatsappNumber: '+923348012580',
     companyPhone: '+92 334 8012580',
@@ -47,13 +50,15 @@ export default function Header() {
   const autocompleteRef = useRef<HTMLDivElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
 
-  // Fetch dynamic categories for navbar
-  const loadNavCategories = async () => {
+  // Fetch dynamic categories for navbar (with memory caching)
+  const loadNavCategories = async (force: boolean = false) => {
+    if (!force && cachedNavCategories && cachedNavCategories.length > 0) return;
     try {
-      const res = await fetch('/api/categories', { cache: 'no-store' });
+      const res = await fetch('/api/categories');
       if (res.ok) {
         const data = await res.json();
         if (data.categories && data.categories.length > 0) {
+          cachedNavCategories = data.categories;
           setCategories(data.categories);
         }
       }
@@ -62,20 +67,22 @@ export default function Header() {
     }
   };
 
-  // Fetch dynamic settings for header
-  const loadSettings = async () => {
+  // Fetch dynamic settings for header (with memory caching)
+  const loadSettings = async (force: boolean = false) => {
+    if (!force && cachedStoreSettings) return;
     try {
-      const res = await fetch('/api/admin/settings', { cache: 'no-store' });
+      const res = await fetch('/api/admin/settings');
       if (res.ok) {
         const data = await res.json();
         if (data.settings) {
-          setStoreSettings(prev => ({
-            ...prev,
-            announcementText: data.settings.announcementText || prev.announcementText,
-            whatsappNumber: data.settings.whatsappNumber || prev.whatsappNumber,
-            companyPhone: data.settings.companyPhone || prev.companyPhone,
-            instagramUrl: data.settings.instagramUrl || prev.instagramUrl
-          }));
+          const newSettings = {
+            announcementText: data.settings.announcementText || 'OEM & Custom Private Label Manufacturing • Direct Factory Pricing',
+            whatsappNumber: data.settings.whatsappNumber || '+923348012580',
+            companyPhone: data.settings.companyPhone || '+92 334 8012580',
+            instagramUrl: data.settings.instagramUrl || 'https://www.instagram.com/lash_tweezers_lounge?igsi=dGl5cWUweXp0MDdj&utm_source=qr'
+          };
+          cachedStoreSettings = newSettings;
+          setStoreSettings(newSettings);
         }
       }
     } catch (err) {
@@ -89,8 +96,8 @@ export default function Header() {
 
     // Listen for custom category updates from admin panel
     const handleRefresh = () => {
-      loadNavCategories();
-      loadSettings();
+      loadNavCategories(true);
+      loadSettings(true);
     };
     window.addEventListener('categories-updated', handleRefresh);
     window.addEventListener('settings-updated', handleRefresh);

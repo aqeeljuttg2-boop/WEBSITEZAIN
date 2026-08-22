@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { Phone, Mail, MapPin, ArrowUp } from 'lucide-react';
 import { useRealtime } from '@/context/RealtimeContext';
 
+let cachedFooterSettings: any = null;
+
 export default function Footer() {
   const [settings, setSettings] = useState<{
     companyName?: string;
@@ -13,7 +15,7 @@ export default function Footer() {
     companyAddress?: string;
     whatsappNumber?: string;
     instagramUrl?: string;
-  }>({
+  }>(() => cachedFooterSettings || {
     companyName: 'Lash Tweezers Lounge',
     companyPhone: '+92-334-8012580',
     companyEmail: 'info@lashtweezerslounge.com',
@@ -22,21 +24,23 @@ export default function Footer() {
     instagramUrl: 'https://www.instagram.com/lash_tweezers_lounge?igsi=dGl5cWUweXp0MDdj&utm_source=qr'
   });
 
-  const loadFooterSettings = async () => {
+  const loadFooterSettings = async (force: boolean = false) => {
+    if (!force && cachedFooterSettings) return;
     try {
-      const res = await fetch('/api/admin/settings', { cache: 'no-store' });
+      const res = await fetch('/api/admin/settings');
       if (res.ok) {
         const data = await res.json();
         if (data.settings) {
-          setSettings(prev => ({
-            ...prev,
-            companyName: data.settings.companyName || prev.companyName,
-            companyPhone: data.settings.companyPhone || prev.companyPhone,
-            companyEmail: data.settings.companyEmail || prev.companyEmail,
-            companyAddress: data.settings.companyAddress || prev.companyAddress,
-            whatsappNumber: data.settings.whatsappNumber || prev.whatsappNumber,
-            instagramUrl: data.settings.instagramUrl || prev.instagramUrl
-          }));
+          const newSettings = {
+            companyName: data.settings.companyName || 'Lash Tweezers Lounge',
+            companyPhone: data.settings.companyPhone || '+92-334-8012580',
+            companyEmail: data.settings.companyEmail || 'info@lashtweezerslounge.com',
+            companyAddress: data.settings.companyAddress || 'King99 Street Block No.99 Wajid Town, Dhattal Stop, Sialkot.',
+            whatsappNumber: data.settings.whatsappNumber || '+92 334 8012580',
+            instagramUrl: data.settings.instagramUrl || 'https://www.instagram.com/lash_tweezers_lounge?igsi=dGl5cWUweXp0MDdj&utm_source=qr'
+          };
+          cachedFooterSettings = newSettings;
+          setSettings(newSettings);
         }
       }
     } catch (e) {
@@ -46,12 +50,13 @@ export default function Footer() {
 
   useEffect(() => {
     loadFooterSettings();
-    window.addEventListener('settings-updated', loadFooterSettings);
-    return () => window.removeEventListener('settings-updated', loadFooterSettings);
+    const handleUpdate = () => loadFooterSettings(true);
+    window.addEventListener('settings-updated', handleUpdate);
+    return () => window.removeEventListener('settings-updated', handleUpdate);
   }, []);
 
   useRealtime('SETTINGS_UPDATED', () => {
-    loadFooterSettings();
+    loadFooterSettings(true);
   });
 
   const scrollToTop = () => {
