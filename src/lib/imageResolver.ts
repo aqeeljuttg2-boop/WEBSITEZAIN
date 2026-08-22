@@ -3,7 +3,7 @@
  * Handles uploaded images, relative paths, full URLs, data URLs, and catalog fallbacks.
  */
 
-export function normalizeImageUrl(img: string | undefined | null): string {
+export function normalizeImageUrl(img: string | null | undefined): string {
   if (!img || typeof img !== 'string') {
     return '/catagori/WhatsApp Image 2026-08-18 at 12.28.05 AM (1).jpeg';
   }
@@ -45,7 +45,7 @@ export function normalizeImageUrl(img: string | undefined | null): string {
 /**
  * Extracts and returns all valid normalized image URLs for a product
  */
-export function getAllProductImages(product: { productCode?: string; images?: string; id?: string } | null | undefined): string[] {
+export function getAllProductImages(product: { productCode?: string | null; images?: string | null; id?: string | null } | null | undefined): string[] {
   if (!product) {
     return ['/catagori/WhatsApp Image 2026-08-18 at 12.28.05 AM (1).jpeg'];
   }
@@ -79,7 +79,7 @@ export function getAllProductImages(product: { productCode?: string; images?: st
 /**
  * Resolves a product's primary image to a valid public URL
  */
-export function getProductImage(product: { productCode?: string; images?: string; id?: string } | null | undefined): string {
+export function getProductImage(product: { productCode?: string | null; images?: string | null; id?: string | null } | null | undefined): string {
   if (!product) {
     return '/catagori/WhatsApp Image 2026-08-18 at 12.28.05 AM (1).jpeg';
   }
@@ -101,7 +101,7 @@ export function getProductImage(product: { productCode?: string; images?: string
     }
   }
 
-  const code = product.productCode?.toLowerCase() || '';
+  const code = (product.productCode || '').toLowerCase();
   
   if (code.startsWith('mic1') || code.startsWith('shear')) {
     const files = [

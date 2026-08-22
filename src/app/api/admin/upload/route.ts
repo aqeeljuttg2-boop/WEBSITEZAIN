@@ -23,15 +23,20 @@ export async function POST(request: Request) {
     const contentType = request.headers.get('content-type') || '';
     const uploadDir = path.join(process.cwd(), 'public', 'products');
 
-    // Check if filesystem is writable
-    let isFileSystemWritable = true;
-    try {
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
+    // Detect Vercel / Serverless environment
+    const isVercel = Boolean(process.env.VERCEL) || Boolean(process.env.VERCEL_ENV) || Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME);
+
+    // Check if filesystem is writable (only relevant for local non-serverless dev)
+    let isFileSystemWritable = !isVercel;
+    if (!isVercel) {
+      try {
+        if (!fs.existsSync(uploadDir)) {
+          fs.mkdirSync(uploadDir, { recursive: true });
+        }
+      } catch (fsErr) {
+        console.warn('Filesystem is read-only (Serverless detected):', fsErr);
+        isFileSystemWritable = false;
       }
-    } catch (fsErr) {
-      console.warn('Filesystem is read-only (Serverless/Vercel environment detected):', fsErr);
-      isFileSystemWritable = false;
     }
 
     const uploadedUrls: string[] = [];
@@ -92,15 +97,34 @@ export async function POST(request: Request) {
         const bytes = await file.arrayBuffer();
         const rawBuffer = Buffer.from(bytes);
         const mime = file.type || 'image/jpeg';
+        const rawName = file.name || 'product_image.jpeg';
 
         const { buffer, dataUrl } = await compressImage(rawBuffer, mime);
 
-        let savedToDisk = false;
+        let finalUrl = dataUrl;
 
-        // Try writing to disk if writable
-        if (isFileSystemWritable) {
+        // On Vercel, always use compressed Data URL to prevent 404s
+        if (isVercel || !isFileSystemWritable) {
+          finalUrl = dataUrl;
+          uploadedUrls.push(finalUrl);
+
           try {
-            const rawName = file.name || 'product_image.jpeg';
+            await db.media.create({
+              data: {
+                fileName: rawName,
+                fileUrl: finalUrl,
+                fileType: 'image',
+                fileSize: buffer.length,
+                mimeType: 'image/jpeg',
+                altText: rawName
+              }
+            });
+          } catch (mErr) {
+            console.warn('Vercel Media record creation skipped:', mErr);
+          }
+        } else {
+          // Local environment write to public/products/
+          try {
             const ext = path.extname(rawName) || '.jpeg';
             const baseName = path.basename(rawName, ext).replace(/[^a-zA-Z0-9_-]/g, '_');
             const timestamp = Date.now();
@@ -109,14 +133,12 @@ export async function POST(request: Request) {
             const filePath = path.join(uploadDir, fileName);
 
             fs.writeFileSync(filePath, buffer);
-            const publicUrl = `/products/${fileName}`;
-            uploadedUrls.push(publicUrl);
-            savedToDisk = true;
+            finalUrl = `/products/${fileName}`;
+            uploadedUrls.push(finalUrl);
 
-            // Automatically record in database Media library
             try {
               await db.media.upsert({
-                where: { fileUrl: publicUrl },
+                where: { fileUrl: finalUrl },
                 update: {
                   fileName: rawName,
                   altText: rawName,
@@ -125,7 +147,7 @@ export async function POST(request: Request) {
                 },
                 create: {
                   fileName: rawName,
-                  fileUrl: publicUrl,
+                  fileUrl: finalUrl,
                   fileType: 'image',
                   fileSize: buffer.length,
                   mimeType: 'image/jpeg',
@@ -137,14 +159,10 @@ export async function POST(request: Request) {
             }
 
           } catch (writeErr: any) {
-            console.warn('Could not write to local disk (falling back to Base64 Data URL):', writeErr?.message);
-            isFileSystemWritable = false;
+            console.warn('Local disk write failed, fallback to Data URL:', writeErr?.message);
+            finalUrl = dataUrl;
+            uploadedUrls.push(finalUrl);
           }
-        }
-
-        // Serverless Fallback (Vercel EROFS protection)
-        if (!savedToDisk) {
-          uploadedUrls.push(dataUrl);
         }
       }
     } 
@@ -173,9 +191,27 @@ export async function POST(request: Request) {
         const rawBuffer = Buffer.from(matches[2], 'base64');
         const { buffer, dataUrl } = await compressImage(rawBuffer, `image/${matches[1] || 'jpeg'}`);
 
-        let savedToDisk = false;
+        let finalUrl = dataUrl;
 
-        if (isFileSystemWritable) {
+        if (isVercel || !isFileSystemWritable) {
+          finalUrl = dataUrl;
+          uploadedUrls.push(finalUrl);
+
+          try {
+            await db.media.create({
+              data: {
+                fileName: `upload_${Date.now()}${ext}`,
+                fileUrl: finalUrl,
+                fileType: 'image',
+                fileSize: buffer.length,
+                mimeType: `image/${matches[1] || 'jpeg'}`,
+                altText: 'Uploaded Image'
+              }
+            });
+          } catch (mErr) {
+            console.warn('Vercel JSON Media record creation skipped:', mErr);
+          }
+        } else {
           try {
             const timestamp = Date.now();
             const randomSalt = Math.floor(Math.random() * 1000);
@@ -183,13 +219,12 @@ export async function POST(request: Request) {
             const filePath = path.join(uploadDir, fileName);
 
             fs.writeFileSync(filePath, buffer);
-            const publicUrl = `/products/${fileName}`;
-            uploadedUrls.push(publicUrl);
-            savedToDisk = true;
+            finalUrl = `/products/${fileName}`;
+            uploadedUrls.push(finalUrl);
 
             try {
               await db.media.upsert({
-                where: { fileUrl: publicUrl },
+                where: { fileUrl: finalUrl },
                 update: {
                   fileName,
                   altText: fileName,
@@ -198,7 +233,7 @@ export async function POST(request: Request) {
                 },
                 create: {
                   fileName,
-                  fileUrl: publicUrl,
+                  fileUrl: finalUrl,
                   fileType: 'image',
                   fileSize: buffer.length,
                   mimeType: `image/${matches[1] || 'jpeg'}`,
@@ -209,13 +244,10 @@ export async function POST(request: Request) {
               console.warn('Media record creation skipped:', mErr);
             }
           } catch (writeErr: any) {
-            console.warn('Could not write JSON base64 to disk, using Data URL:', writeErr?.message);
-            isFileSystemWritable = false;
+            console.warn('Local disk write failed, fallback to Data URL:', writeErr?.message);
+            finalUrl = dataUrl;
+            uploadedUrls.push(finalUrl);
           }
-        }
-
-        if (!savedToDisk) {
-          uploadedUrls.push(dataUrl);
         }
       }
     }

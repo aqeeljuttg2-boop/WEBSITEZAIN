@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import { useRealtime } from '@/context/RealtimeContext';
+import { normalizeImageUrl } from '@/lib/imageResolver';
 
 interface SubcategoryItem {
   id: string;
@@ -349,7 +350,7 @@ export default function AdminCategoriesPage() {
                       {/* Image Thumbnail */}
                       <div className="w-10 h-10 rounded-xl bg-[#120a12] border border-white/10 overflow-hidden relative flex items-center justify-center shrink-0">
                         {cat.image ? (
-                          <Image src={cat.image} alt={cat.name} fill sizes="40px" className="object-cover" />
+                          <Image src={normalizeImageUrl(cat.image)} alt={cat.name} fill sizes="40px" className="object-cover" />
                         ) : (
                           <Layers size={18} className="text-[#C21875]" />
                         )}
@@ -412,7 +413,7 @@ export default function AdminCategoriesPage() {
                             <span className="text-white/30 text-xs font-mono">└──</span>
                             <div className="w-7 h-7 rounded-lg bg-[#140d14] border border-white/10 overflow-hidden relative flex items-center justify-center shrink-0">
                               {sub.image ? (
-                                <Image src={sub.image} alt={sub.name} fill sizes="28px" className="object-cover" />
+                                <Image src={normalizeImageUrl(sub.image)} alt={sub.name} fill sizes="28px" className="object-cover" />
                               ) : (
                                 <span className="text-[10px] text-[#D6B36A] font-bold">SUB</span>
                               )}

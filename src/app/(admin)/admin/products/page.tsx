@@ -13,6 +13,7 @@ import {
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRealtime } from '@/context/RealtimeContext';
+import { getProductImage } from '@/lib/imageResolver';
 
 interface PricingTierInput {
   minQuantity: number;
@@ -811,7 +812,7 @@ export default function AdminProductsPage() {
               ) : (
                 filteredProducts.map((prod) => {
                   const isSelected = selectedProductIds.includes(prod.id);
-                  const firstImage = prod.images ? prod.images.split(',')[0].trim() : '';
+                  const firstImage = getProductImage(prod);
 
                   return (
                     <tr 
