@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import db from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { broadcastRealtimeEvent } from '@/lib/realtime';
+import memoryCache from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -230,6 +232,17 @@ export async function PUT(
       }
     }
 
+    // Invalidate memory cache and revalidate storefront pages
+    memoryCache.invalidateTag('products');
+    try {
+      revalidatePath('/');
+      revalidatePath('/shop');
+      revalidatePath(`/product/${updated.slug}`);
+      if (existingProduct.slug !== updated.slug) {
+        revalidatePath(`/product/${existingProduct.slug}`);
+      }
+    } catch {}
+
     try {
       broadcastRealtimeEvent({
         type: 'PRODUCT_UPDATED',
@@ -293,6 +306,13 @@ export async function DELETE(
     await db.product.delete({
       where: { id: existingProduct.id },
     });
+
+    memoryCache.invalidateTag('products');
+    try {
+      revalidatePath('/');
+      revalidatePath('/shop');
+      revalidatePath(`/product/${existingProduct.slug}`);
+    } catch {}
 
     try {
       broadcastRealtimeEvent({

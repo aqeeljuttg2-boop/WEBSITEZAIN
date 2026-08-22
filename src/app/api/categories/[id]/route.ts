@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import db from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { broadcastRealtimeEvent } from '@/lib/realtime';
+import memoryCache from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +14,12 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    const cacheKey = `category_detail_${id}`;
+    const cached = memoryCache.get(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached, { status: 200 });
+    }
+
     const category = await db.category.findFirst({
       where: {
         OR: [
@@ -36,7 +44,10 @@ export async function GET(
       return NextResponse.json({ error: 'Category not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ category }, { status: 200 });
+    const resPayload = { category };
+    memoryCache.set(cacheKey, resPayload, 60, ['categories']);
+
+    return NextResponse.json(resPayload, { status: 200 });
   } catch (error: any) {
     console.error('API GET Category Error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
@@ -134,6 +145,13 @@ export async function PUT(
       }
     });
 
+    // Invalidate cache and revalidate pages
+    memoryCache.invalidateTag('categories');
+    try {
+      revalidatePath('/');
+      revalidatePath('/shop');
+    } catch {}
+
     try {
       broadcastRealtimeEvent({
         type: 'CATEGORY_UPDATED',
@@ -207,6 +225,12 @@ export async function DELETE(
     await db.category.delete({
       where: { id }
     });
+
+    memoryCache.invalidateTag('categories');
+    try {
+      revalidatePath('/');
+      revalidatePath('/shop');
+    } catch {}
 
     try {
       broadcastRealtimeEvent({

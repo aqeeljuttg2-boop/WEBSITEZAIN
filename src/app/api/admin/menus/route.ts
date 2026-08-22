@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import db from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import { broadcastRealtimeEvent } from '@/lib/realtime';
+import memoryCache from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +13,15 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const menuType = searchParams.get('type');
     const all = searchParams.get('all') === 'true';
+
+    const cacheKey = `menus_${menuType || 'all'}_${all ? 'all' : 'enabled'}`;
+    const cached = memoryCache.get(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached, {
+        status: 200,
+        headers: { 'X-Cache': 'HIT', 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' }
+      });
+    }
 
     const where: any = {};
     if (!all) where.isEnabled = true;
@@ -25,7 +37,13 @@ export async function GET(request: Request) {
       orderBy: { orderIndex: 'asc' }
     });
 
-    return NextResponse.json({ menus }, { status: 200 });
+    const resPayload = { menus };
+    memoryCache.set(cacheKey, resPayload, 60, ['menus']);
+
+    return NextResponse.json(resPayload, {
+      status: 200,
+      headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' }
+    });
   } catch (error: any) {
     console.error('API GET Menus Error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
@@ -54,6 +72,23 @@ export async function POST(request: Request) {
           data: { orderIndex: i }
         });
       }
+
+      memoryCache.invalidateTag('menus');
+      try {
+        revalidatePath('/', 'layout');
+      } catch {}
+
+      try {
+        broadcastRealtimeEvent({
+          type: 'MENU_UPDATED',
+          title: 'Navigation Menu Reordered',
+          message: 'Navbar structure updated live',
+          source: 'admin'
+        });
+      } catch (err) {
+        console.warn('Realtime broadcast error:', err);
+      }
+
       return NextResponse.json({ success: true, message: 'Menu order updated' });
     }
 
@@ -76,6 +111,23 @@ export async function POST(request: Request) {
         isEnabled: isEnabled !== undefined ? Boolean(isEnabled) : true,
       }
     });
+
+    memoryCache.invalidateTag('menus');
+    try {
+      revalidatePath('/', 'layout');
+    } catch {}
+
+    try {
+      broadcastRealtimeEvent({
+        type: 'MENU_UPDATED',
+        title: `Menu Item Added (${item.title})`,
+        message: 'Navbar updated in real time',
+        data: item,
+        source: 'admin'
+      });
+    } catch (err) {
+      console.warn('Realtime broadcast error:', err);
+    }
 
     return NextResponse.json({ success: true, menuItem: item, message: 'Menu item created!' }, { status: 201 });
   } catch (error: any) {

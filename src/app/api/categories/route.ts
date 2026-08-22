@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import db from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { broadcastRealtimeEvent } from '@/lib/realtime';
+import memoryCache from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -12,6 +14,15 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const flat = searchParams.get('flat') === 'true';
     const all = searchParams.get('all') === 'true';
+
+    const cacheKey = `categories_${flat ? 'flat' : 'nested'}_${all ? 'all' : 'active'}`;
+    const cached = memoryCache.get(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached, {
+        status: 200,
+        headers: { 'X-Cache': 'HIT', 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' }
+      });
+    }
 
     const whereCondition: any = all ? {} : { isActive: true };
 
@@ -29,7 +40,14 @@ export async function GET(request: Request) {
           { name: 'asc' }
         ]
       });
-      return NextResponse.json({ categories: allCategories }, { status: 200 });
+
+      const resData = { categories: allCategories };
+      memoryCache.set(cacheKey, resData, 60, ['categories']);
+
+      return NextResponse.json(resData, {
+        status: 200,
+        headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' }
+      });
     }
 
     const categories = await db.category.findMany({
@@ -51,7 +69,13 @@ export async function GET(request: Request) {
       orderBy: { orderIndex: 'asc' },
     });
 
-    return NextResponse.json({ categories }, { status: 200 });
+    const resData = { categories };
+    memoryCache.set(cacheKey, resData, 60, ['categories']);
+
+    return NextResponse.json(resData, {
+      status: 200,
+      headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' }
+    });
   } catch (error: any) {
     console.error('API GET Categories Error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
@@ -117,6 +141,13 @@ export async function POST(request: Request) {
         _count: { select: { products: true } }
       }
     });
+
+    // Invalidate cache and revalidate pages
+    memoryCache.invalidateTag('categories');
+    try {
+      revalidatePath('/');
+      revalidatePath('/shop');
+    } catch {}
 
     try {
       broadcastRealtimeEvent({

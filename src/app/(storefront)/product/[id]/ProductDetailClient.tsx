@@ -10,7 +10,7 @@ import {
   Truck, ArrowLeft, Heart, CheckCircle2, ChevronRight, Share2 
 } from 'lucide-react';
 import ProductCard from '@/components/ProductCard';
-import { getProductImage } from '@/lib/imageResolver';
+import { getProductImage, getAllProductImages } from '@/lib/imageResolver';
 
 interface ProductDetailClientProps {
   product: Product & {
@@ -103,16 +103,8 @@ export default function ProductDetailClient({ product, relatedProducts }: Produc
   }
   const totalPrice = unitPrice * quantity;
 
-  // Split images and resolve mock paths
-  let rawImages: string[] = [];
-  if (product.images) {
-    if (product.images.startsWith('[')) {
-      try { rawImages = JSON.parse(product.images); } catch (_) { rawImages = product.images.split(','); }
-    } else {
-      rawImages = product.images.split(',').map(s => s.trim()).filter(Boolean);
-    }
-  }
-  const imageList = rawImages.length > 0 ? rawImages : [getProductImage(product)];
+  // Split images and resolve normalized paths
+  const imageList = getAllProductImages(product);
   const mainImage = imageList[activeImageIndex] || imageList[0];
 
   // Extract original price from description
@@ -161,20 +153,13 @@ Please provide wholesale B2B pricing info.`;
         {/* LEFT: Image Gallery */}
         <div className="lg:col-span-5 space-y-4">
           <div className="bg-gray-50 border border-gray-200 rounded-2xl aspect-square flex items-center justify-center p-8 overflow-hidden relative group">
-            {product.images ? (
-              <Image 
-                src={mainImage} 
-                alt={product.name} 
-                fill
-                sizes="(max-width: 1024px) 100vw, 40vw"
-                className="object-contain p-8 transform group-hover:scale-105 transition-transform duration-500"
-              />
-            ) : (
-              <svg viewBox="0 0 100 100" className="w-48 h-48 stroke-gray-200 fill-none stroke-[0.8]">
-                <circle cx="50" cy="50" r="40" strokeDasharray="3,3" />
-                <path d="M25 50 H75 M50 25 V75" />
-              </svg>
-            )}
+            <Image 
+              src={mainImage} 
+              alt={product.name} 
+              fill
+              sizes="(max-width: 1024px) 100vw, 40vw"
+              className="object-contain p-8 transform group-hover:scale-105 transition-transform duration-500"
+            />
             <span className="absolute top-3 left-3 bg-red-600 text-white text-[10px] font-extrabold px-2.5 py-1 rounded shadow-sm">
               14% OFF
             </span>

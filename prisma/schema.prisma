@@ -46,6 +46,10 @@ model Category {
   orderIndex     Int        @default(0)
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
+
+  @@index([parentId, isActive])
+  @@index([isActive, orderIndex])
+  @@index([slug])
 }
 
 model Brand {
@@ -60,6 +64,9 @@ model Brand {
   products    Product[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+
+  @@index([isActive, orderIndex])
+  @@index([slug])
 }
 
 model Product {
@@ -105,6 +112,14 @@ model Product {
   wishlists      Wishlist[]
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
+
+  @@index([status, isFeatured])
+  @@index([status, categoryId])
+  @@index([status, brandId])
+  @@index([status, createdAt])
+  @@index([orderIndex])
+  @@index([slug])
+  @@index([productCode])
 }
 
 model PricingTier {
@@ -116,6 +131,8 @@ model PricingTier {
   pricePerUnit Float
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  @@index([productId, minQuantity])
 }
 
 model Order {
@@ -142,6 +159,10 @@ model Order {
   items           OrderItem[]
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
+
+  @@index([status, createdAt])
+  @@index([userId])
+  @@index([orderNumber])
 }
 
 model OrderItem {
@@ -157,6 +178,9 @@ model OrderItem {
   totalPrice   Float
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([productId])
 }
 
 model Rfq {
@@ -176,6 +200,10 @@ model Rfq {
   items         RfqItem[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+
+  @@index([status, createdAt])
+  @@index([userId])
+  @@index([rfqNumber])
 }
 
 model RfqItem {
@@ -193,6 +221,9 @@ model RfqItem {
   additionalRequirements String?
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
+
+  @@index([rfqId])
+  @@index([productId])
 }
 
 model Review {
@@ -211,6 +242,8 @@ model Review {
   adminReply String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+
+  @@index([productId, isApproved])
 }
 
 model Wishlist {
@@ -220,6 +253,8 @@ model Wishlist {
   productId String
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 model Coupon {
@@ -236,6 +271,8 @@ model Coupon {
   status         String    @default("ACTIVE")
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
+
+  @@index([code, status])
 }
 
 model Banner {
@@ -256,6 +293,8 @@ model Banner {
   orderIndex   Int       @default(0)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+
+  @@index([position, isActive, orderIndex])
 }
 
 model HomepageSection {
@@ -273,6 +312,9 @@ model HomepageSection {
   config      String?  // JSON configuration
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([isEnabled, orderIndex])
+  @@index([sectionKey])
 }
 
 model MenuItem {
@@ -289,6 +331,9 @@ model MenuItem {
   isEnabled   Boolean    @default(true)
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
+
+  @@index([menuType, isEnabled, orderIndex])
+  @@index([parentId])
 }
 
 model Page {
@@ -303,6 +348,8 @@ model Page {
   template       String   @default("STANDARD") // STANDARD, FULL_WIDTH, CONTACT, POLICY
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+
+  @@index([slug, isPublished])
 }
 
 model Media {
@@ -315,6 +362,8 @@ model Media {
   altText   String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([fileType, createdAt])
 }
 
 model Setting {
@@ -324,4 +373,6 @@ model Setting {
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([key])
 }

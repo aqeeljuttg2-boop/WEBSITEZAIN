@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import db from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import { broadcastRealtimeEvent } from '@/lib/realtime';
+import memoryCache from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,12 +13,27 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const all = searchParams.get('all') === 'true';
 
+    const cacheKey = `pages_${all ? 'all' : 'published'}`;
+    const cached = memoryCache.get(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached, {
+        status: 200,
+        headers: { 'X-Cache': 'HIT', 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' }
+      });
+    }
+
     const pages = await db.page.findMany({
       where: all ? {} : { isPublished: true },
       orderBy: { createdAt: 'desc' }
     });
 
-    return NextResponse.json({ pages }, { status: 200 });
+    const resPayload = { pages };
+    memoryCache.set(cacheKey, resPayload, 60, ['pages']);
+
+    return NextResponse.json(resPayload, {
+      status: 200,
+      headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' }
+    });
   } catch (error: any) {
     console.error('API GET Pages Error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
@@ -62,6 +80,24 @@ export async function POST(request: Request) {
         template: template || 'STANDARD',
       }
     });
+
+    memoryCache.invalidateTag('pages');
+    try {
+      revalidatePath(`/${page.slug}`);
+      revalidatePath('/');
+    } catch {}
+
+    try {
+      broadcastRealtimeEvent({
+        type: 'PAGE_UPDATED',
+        title: `Page Created (${page.title})`,
+        message: 'New custom page published live',
+        data: page,
+        source: 'admin'
+      });
+    } catch (err) {
+      console.warn('Realtime broadcast error:', err);
+    }
 
     return NextResponse.json({ success: true, page, message: 'Page created successfully!' }, { status: 201 });
   } catch (error: any) {

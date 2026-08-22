@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import { broadcastRealtimeEvent } from '@/lib/realtime';
+
+export const dynamic = 'force-dynamic';
 
 // GET all coupons (Admin only)
 export async function GET() {
@@ -57,6 +60,18 @@ export async function POST(request: Request) {
       }
     });
 
+    try {
+      broadcastRealtimeEvent({
+        type: 'COUPON_UPDATED',
+        title: `Coupon Created (${coupon.code})`,
+        message: 'New discount promo code created live',
+        data: coupon,
+        source: 'admin'
+      });
+    } catch (err) {
+      console.warn('Realtime broadcast error:', err);
+    }
+
     return NextResponse.json({ success: true, coupon }, { status: 201 });
 
   } catch (error: any) {
@@ -109,6 +124,18 @@ export async function PUT(request: Request) {
       }
     });
 
+    try {
+      broadcastRealtimeEvent({
+        type: 'COUPON_UPDATED',
+        title: `Coupon Updated (${updated.code})`,
+        message: 'Discount promo code updated live',
+        data: updated,
+        source: 'admin'
+      });
+    } catch (err) {
+      console.warn('Realtime broadcast error:', err);
+    }
+
     return NextResponse.json({ success: true, coupon: updated }, { status: 200 });
 
   } catch (error: any) {
@@ -133,6 +160,17 @@ export async function DELETE(request: Request) {
     }
 
     await db.coupon.delete({ where: { id: couponId } });
+
+    try {
+      broadcastRealtimeEvent({
+        type: 'COUPON_UPDATED',
+        title: 'Coupon Removed',
+        message: 'A discount promo code was removed',
+        source: 'admin'
+      });
+    } catch (err) {
+      console.warn('Realtime broadcast error:', err);
+    }
 
     return NextResponse.json({ success: true, message: 'Coupon deleted successfully' }, { status: 200 });
 

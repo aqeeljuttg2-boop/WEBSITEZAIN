@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import db from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { broadcastRealtimeEvent } from '@/lib/realtime';
+import memoryCache from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -35,6 +37,15 @@ export async function GET(request: Request) {
     // Sorting
     const sort = searchParams.get('sort') || 'newest';
 
+    const cacheKey = `products_${searchParams.toString()}`;
+    const cachedResponse = memoryCache.get(cacheKey);
+    if (cachedResponse) {
+      return NextResponse.json(cachedResponse, {
+        status: 200,
+        headers: { 'X-Cache': 'HIT', 'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=30' }
+      });
+    }
+
     // Construct Prisma query filter
     const where: any = {};
 
@@ -66,14 +77,14 @@ export async function GET(request: Request) {
     // Search filter
     if (search) {
       where.OR = [
-        { name: { contains: search } },
-        { productCode: { contains: search } },
-        { sku: { contains: search } },
-        { description: { contains: search } },
-        { shortDescription: { contains: search } },
-        { material: { contains: search } },
-        { finish: { contains: search } },
-        { tags: { contains: search } },
+        { name: { contains: search, mode: 'insensitive' } },
+        { productCode: { contains: search, mode: 'insensitive' } },
+        { sku: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+        { shortDescription: { contains: search, mode: 'insensitive' } },
+        { material: { contains: search, mode: 'insensitive' } },
+        { finish: { contains: search, mode: 'insensitive' } },
+        { tags: { contains: search, mode: 'insensitive' } },
       ];
     }
 
@@ -83,9 +94,9 @@ export async function GET(request: Request) {
       lte: maxPrice,
     };
 
-    if (material) where.material = { contains: material };
-    if (finish) where.finish = { contains: finish };
-    if (size) where.size = { contains: size };
+    if (material) where.material = { contains: material, mode: 'insensitive' };
+    if (finish) where.finish = { contains: finish, mode: 'insensitive' };
+    if (size) where.size = { contains: size, mode: 'insensitive' };
     if (moq !== null && moq > 0) where.moq = { lte: moq };
 
     // Determine Sort Order
@@ -128,7 +139,7 @@ export async function GET(request: Request) {
 
     const pages = Math.ceil(total / limit);
 
-    return NextResponse.json({
+    const responsePayload = {
       products,
       pagination: {
         total,
@@ -136,7 +147,15 @@ export async function GET(request: Request) {
         currentPage: page,
         limit,
       }
-    }, { status: 200 });
+    };
+
+    // Cache in fast memory (TTL 30 seconds)
+    memoryCache.set(cacheKey, responsePayload, 30, ['products']);
+
+    return NextResponse.json(responsePayload, {
+      status: 200,
+      headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=30' }
+    });
 
   } catch (error: any) {
     console.error('API GET Products Error:', error);
@@ -164,6 +183,13 @@ export async function POST(request: Request) {
       await db.wishlist.deleteMany({ where: { productId: { in: body.productIds } } });
       await db.review.deleteMany({ where: { productId: { in: body.productIds } } });
       await db.product.deleteMany({ where: { id: { in: body.productIds } } });
+
+      memoryCache.invalidateTag('products');
+      try {
+        revalidatePath('/');
+        revalidatePath('/shop');
+      } catch {}
+
       return NextResponse.json({ success: true, message: `Successfully deleted ${body.productIds.length} products.` });
     }
 
@@ -172,6 +198,13 @@ export async function POST(request: Request) {
         where: { id: { in: body.productIds } },
         data: { status: body.status }
       });
+
+      memoryCache.invalidateTag('products');
+      try {
+        revalidatePath('/');
+        revalidatePath('/shop');
+      } catch {}
+
       return NextResponse.json({ success: true, message: `Updated status for ${body.productIds.length} products.` });
     }
 
@@ -180,6 +213,13 @@ export async function POST(request: Request) {
         where: { id: { in: body.productIds } },
         data: { categoryId: body.categoryId || null }
       });
+
+      memoryCache.invalidateTag('products');
+      try {
+        revalidatePath('/');
+        revalidatePath('/shop');
+      } catch {}
+
       return NextResponse.json({ success: true, message: `Reassigned category for ${body.productIds.length} products.` });
     }
 
@@ -325,6 +365,14 @@ export async function POST(request: Request) {
         }
       }
     }
+
+    // Invalidate product cache & revalidate Next.js pages instantly
+    memoryCache.invalidateTag('products');
+    try {
+      revalidatePath('/');
+      revalidatePath('/shop');
+      revalidatePath(`/product/${product.slug}`);
+    } catch {}
 
     try {
       broadcastRealtimeEvent({

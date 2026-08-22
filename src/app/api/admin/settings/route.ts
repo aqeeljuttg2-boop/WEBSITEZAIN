@@ -1,19 +1,37 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import db from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { broadcastRealtimeEvent } from '@/lib/realtime';
+import memoryCache from '@/lib/cache';
 
-// GET all settings (Public can fetch settings, but let's hide sensitive fields if any)
+export const dynamic = 'force-dynamic';
+
+// GET all settings (Public can fetch settings)
 export async function GET() {
   try {
+    const cacheKey = 'store_settings';
+    const cached = memoryCache.get(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached, {
+        status: 200,
+        headers: { 'X-Cache': 'HIT', 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' }
+      });
+    }
+
     const settingsList = await db.setting.findMany();
-    // Convert array of [{key, value}] to an object { [key]: value } for easier frontend usage
     const settings: Record<string, string> = {};
     settingsList.forEach(s => {
       settings[s.key] = s.value;
     });
 
-    return NextResponse.json({ settings }, { status: 200 });
+    const resPayload = { settings };
+    memoryCache.set(cacheKey, resPayload, 60, ['settings']);
+
+    return NextResponse.json(resPayload, {
+      status: 200,
+      headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' }
+    });
   } catch (error: any) {
     console.error('API GET Settings Error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
@@ -56,6 +74,12 @@ export async function PUT(request: Request) {
     freshList.forEach(s => {
       settings[s.key] = s.value;
     });
+
+    memoryCache.invalidateTag('settings');
+    try {
+      revalidatePath('/', 'layout');
+      revalidatePath('/shop');
+    } catch {}
 
     try {
       broadcastRealtimeEvent({

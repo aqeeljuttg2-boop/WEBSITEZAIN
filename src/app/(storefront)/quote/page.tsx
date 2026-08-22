@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { FileText, Trash2, ArrowRight, ArrowLeft, Send, CheckCircle2 } from 'lucide-react';
+import { getProductImage } from '@/lib/imageResolver';
 
 export default function QuotePage() {
   const router = useRouter();
@@ -150,18 +151,14 @@ export default function QuotePage() {
               </div>
               <div className="divide-y divide-white/5">
                 {quote.map((item) => {
-                  const firstImg = item.product.images ? item.product.images.split(',')[0] : '';
+                  const firstImg = getProductImage(item.product);
 
                   return (
                     <div key={item.product.id} className="p-6 space-y-4 hover:bg-white/2 transition-colors">
                       <div className="flex items-center justify-between gap-4">
                         <div className="flex items-center space-x-4">
-                          <div className="w-14 h-14 bg-[#261c26] border border-white/5 rounded-lg flex items-center justify-center p-1.5 shrink-0">
-                            {firstImg ? (
-                              <img src={firstImg} alt={item.product.name} className="object-contain max-h-full max-w-full" />
-                            ) : (
-                              <span className="text-[10px] text-white/30 font-mono">{item.product.productCode}</span>
-                            )}
+                          <div className="w-14 h-14 bg-[#261c26] border border-white/5 rounded-lg flex items-center justify-center p-1.5 shrink-0 overflow-hidden">
+                            <img src={firstImg} alt={item.product.name} className="object-contain max-h-full max-w-full" />
                           </div>
                           <div>
                             <Link href={`/product/${item.product.slug}`} className="font-bold text-sm hover:text-[#C21875]">

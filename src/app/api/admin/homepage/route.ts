@@ -1,13 +1,24 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import db from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { broadcastRealtimeEvent } from '@/lib/realtime';
+import memoryCache from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';
 
 // GET all homepage sections & slider banners
 export async function GET() {
   try {
+    const cacheKey = 'homepage_sections_and_banners';
+    const cached = memoryCache.get(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached, {
+        status: 200,
+        headers: { 'X-Cache': 'HIT', 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' }
+      });
+    }
+
     const [sections, heroSlides] = await Promise.all([
       db.homepageSection.findMany({
         orderBy: { orderIndex: 'asc' }
@@ -18,7 +29,13 @@ export async function GET() {
       })
     ]);
 
-    return NextResponse.json({ sections, heroSlides }, { status: 200 });
+    const resPayload = { sections, heroSlides };
+    memoryCache.set(cacheKey, resPayload, 60, ['homepage', 'banners']);
+
+    return NextResponse.json(resPayload, {
+      status: 200,
+      headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' }
+    });
   } catch (error: any) {
     console.error('API GET Homepage Config Error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
@@ -49,6 +66,12 @@ export async function PUT(request: Request) {
         });
       }
 
+      memoryCache.invalidateTag(['homepage', 'banners']);
+      try {
+        revalidatePath('/');
+        revalidatePath('/(storefront)', 'layout');
+      } catch {}
+
       try {
         broadcastRealtimeEvent({
           type: 'HOMEPAGE_UPDATED',
@@ -72,6 +95,12 @@ export async function PUT(request: Request) {
         where: { id: body.id },
         data: { isEnabled: !existing.isEnabled }
       });
+
+      memoryCache.invalidateTag(['homepage', 'banners']);
+      try {
+        revalidatePath('/');
+        revalidatePath('/(storefront)', 'layout');
+      } catch {}
 
       try {
         broadcastRealtimeEvent({
@@ -107,6 +136,12 @@ export async function PUT(request: Request) {
         }
       });
 
+      memoryCache.invalidateTag(['homepage', 'banners']);
+      try {
+        revalidatePath('/');
+        revalidatePath('/(storefront)', 'layout');
+      } catch {}
+
       try {
         broadcastRealtimeEvent({
           type: 'HOMEPAGE_UPDATED',
@@ -140,6 +175,12 @@ export async function PUT(request: Request) {
           config: config ? (typeof config === 'string' ? config : JSON.stringify(config)) : null,
         }
       });
+
+      memoryCache.invalidateTag(['homepage', 'banners']);
+      try {
+        revalidatePath('/');
+        revalidatePath('/(storefront)', 'layout');
+      } catch {}
 
       try {
         broadcastRealtimeEvent({

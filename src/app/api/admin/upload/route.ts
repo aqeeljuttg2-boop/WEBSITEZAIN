@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
+import db from '@/lib/db';
+import { broadcastRealtimeEvent } from '@/lib/realtime';
 import fs from 'fs';
 import path from 'path';
 import sharp from 'sharp';
@@ -107,8 +109,33 @@ export async function POST(request: Request) {
             const filePath = path.join(uploadDir, fileName);
 
             fs.writeFileSync(filePath, buffer);
-            uploadedUrls.push(`/products/${fileName}`);
+            const publicUrl = `/products/${fileName}`;
+            uploadedUrls.push(publicUrl);
             savedToDisk = true;
+
+            // Automatically record in database Media library
+            try {
+              await db.media.upsert({
+                where: { fileUrl: publicUrl },
+                update: {
+                  fileName: rawName,
+                  altText: rawName,
+                  fileSize: buffer.length,
+                  mimeType: 'image/jpeg'
+                },
+                create: {
+                  fileName: rawName,
+                  fileUrl: publicUrl,
+                  fileType: 'image',
+                  fileSize: buffer.length,
+                  mimeType: 'image/jpeg',
+                  altText: rawName
+                }
+              });
+            } catch (mErr) {
+              console.warn('Media record creation skipped:', mErr);
+            }
+
           } catch (writeErr: any) {
             console.warn('Could not write to local disk (falling back to Base64 Data URL):', writeErr?.message);
             isFileSystemWritable = false;
@@ -156,8 +183,31 @@ export async function POST(request: Request) {
             const filePath = path.join(uploadDir, fileName);
 
             fs.writeFileSync(filePath, buffer);
-            uploadedUrls.push(`/products/${fileName}`);
+            const publicUrl = `/products/${fileName}`;
+            uploadedUrls.push(publicUrl);
             savedToDisk = true;
+
+            try {
+              await db.media.upsert({
+                where: { fileUrl: publicUrl },
+                update: {
+                  fileName,
+                  altText: fileName,
+                  fileSize: buffer.length,
+                  mimeType: `image/${matches[1] || 'jpeg'}`
+                },
+                create: {
+                  fileName,
+                  fileUrl: publicUrl,
+                  fileType: 'image',
+                  fileSize: buffer.length,
+                  mimeType: `image/${matches[1] || 'jpeg'}`,
+                  altText: fileName
+                }
+              });
+            } catch (mErr) {
+              console.warn('Media record creation skipped:', mErr);
+            }
           } catch (writeErr: any) {
             console.warn('Could not write JSON base64 to disk, using Data URL:', writeErr?.message);
             isFileSystemWritable = false;
@@ -173,6 +223,16 @@ export async function POST(request: Request) {
     if (uploadedUrls.length === 0) {
       return NextResponse.json({ error: 'No files could be processed' }, { status: 400 });
     }
+
+    try {
+      broadcastRealtimeEvent({
+        type: 'MEDIA_UPLOADED',
+        title: 'New Media Uploaded',
+        message: `${uploadedUrls.length} file(s) uploaded`,
+        data: uploadedUrls,
+        source: 'admin'
+      });
+    } catch {}
 
     return NextResponse.json({
       success: true,

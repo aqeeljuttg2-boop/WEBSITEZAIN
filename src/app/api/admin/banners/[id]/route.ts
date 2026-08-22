@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import db from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import { broadcastRealtimeEvent } from '@/lib/realtime';
+import memoryCache from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -76,6 +79,23 @@ export async function PUT(
       }
     });
 
+    memoryCache.invalidateTag(['banners', 'homepage']);
+    try {
+      revalidatePath('/');
+    } catch {}
+
+    try {
+      broadcastRealtimeEvent({
+        type: 'BANNER_UPDATED',
+        title: `Banner Updated (${updated.title})`,
+        message: 'Banner configuration changes live synced',
+        data: updated,
+        source: 'admin'
+      });
+    } catch (err) {
+      console.warn('Realtime broadcast error:', err);
+    }
+
     return NextResponse.json({ success: true, banner: updated, message: 'Banner updated successfully!' }, { status: 200 });
   } catch (error: any) {
     console.error('API PUT Banner Error:', error);
@@ -100,6 +120,23 @@ export async function DELETE(
     }
 
     await db.banner.delete({ where: { id } });
+
+    memoryCache.invalidateTag(['banners', 'homepage']);
+    try {
+      revalidatePath('/');
+    } catch {}
+
+    try {
+      broadcastRealtimeEvent({
+        type: 'BANNER_UPDATED',
+        title: 'Banner Removed',
+        message: 'A banner was deleted from catalog',
+        source: 'admin'
+      });
+    } catch (err) {
+      console.warn('Realtime broadcast error:', err);
+    }
+
     return NextResponse.json({ success: true, message: 'Banner deleted successfully' }, { status: 200 });
   } catch (error: any) {
     console.error('API DELETE Banner Error:', error);

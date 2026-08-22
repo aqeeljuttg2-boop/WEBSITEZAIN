@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import db from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { broadcastRealtimeEvent } from '@/lib/realtime';
+import memoryCache from '@/lib/cache';
 
 // POST reorder categories
 export async function POST(request: Request) {
@@ -27,6 +29,12 @@ export async function POST(request: Request) {
         })
       )
     );
+
+    memoryCache.invalidateTag('categories');
+    try {
+      revalidatePath('/');
+      revalidatePath('/shop');
+    } catch {}
 
     try {
       broadcastRealtimeEvent({

@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import db from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { broadcastRealtimeEvent } from '@/lib/realtime';
+import memoryCache from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +14,15 @@ export async function GET(request: Request) {
     const position = searchParams.get('position');
     const all = searchParams.get('all') === 'true';
 
+    const cacheKey = `banners_${position || 'all'}_${all ? 'all' : 'active'}`;
+    const cached = memoryCache.get(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached, {
+        status: 200,
+        headers: { 'X-Cache': 'HIT', 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' }
+      });
+    }
+
     const where: any = {};
     if (!all) where.isActive = true;
     if (position) where.position = position;
@@ -21,7 +32,13 @@ export async function GET(request: Request) {
       orderBy: { orderIndex: 'asc' }
     });
 
-    return NextResponse.json({ banners }, { status: 200 });
+    const resPayload = { banners };
+    memoryCache.set(cacheKey, resPayload, 60, ['banners', 'homepage']);
+
+    return NextResponse.json(resPayload, {
+      status: 200,
+      headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' }
+    });
   } catch (error: any) {
     console.error('API GET Banners Error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
@@ -80,6 +97,11 @@ export async function POST(request: Request) {
         orderIndex: orderIndex !== undefined ? parseInt(orderIndex.toString(), 10) : 0,
       }
     });
+
+    memoryCache.invalidateTag(['banners', 'homepage']);
+    try {
+      revalidatePath('/');
+    } catch {}
 
     try {
       broadcastRealtimeEvent({

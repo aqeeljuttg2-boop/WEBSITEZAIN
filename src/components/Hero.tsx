@@ -3,23 +3,30 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRealtime } from '@/context/RealtimeContext';
+import { normalizeImageUrl } from '@/lib/imageResolver';
 
-interface Slide {
-  id: number;
+interface DynamicBanner {
+  id: string;
   title: string;
-  subtitle: string;
-  badge: string;
-  bgClass: string;
-  textColorClass: string;
-  badgeColorClass: string;
-  imageSVG: React.ReactNode;
-  primaryBtnText: string;
-  primaryBtnUrl: string;
-  secondaryBtnText: string;
-  secondaryBtnUrl: string;
+  subtitle?: string | null;
+  badge?: string | null;
+  buttonText?: string | null;
+  buttonUrl?: string | null;
+  secondaryButtonText?: string | null;
+  secondaryButtonUrl?: string | null;
+  desktopImage?: string | null;
+  mobileImage?: string | null;
+  position?: string;
+  isActive?: boolean;
 }
 
-export default function Hero() {
+interface HeroProps {
+  initialBanners?: DynamicBanner[];
+}
+
+export default function Hero({ initialBanners = [] }: HeroProps) {
+  const [banners, setBanners] = useState<DynamicBanner[]>(initialBanners);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [activeSubImageIndex1, setActiveSubImageIndex1] = useState(0);
   const [activeSubImageIndex2, setActiveSubImageIndex2] = useState(0);
@@ -38,13 +45,31 @@ export default function Hero() {
     'WhatsApp Image 2026-08-18 at 12.28.21 AM.jpeg'
   ];
 
+  const loadLiveBanners = async () => {
+    try {
+      const res = await fetch('/api/admin/banners?position=HERO_SLIDER');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.banners && data.banners.length > 0) {
+          setBanners(data.banners);
+        }
+      }
+    } catch (e) {
+      // quiet fallback
+    }
+  };
+
+  useRealtime(['BANNER_UPDATED', 'HOMEPAGE_UPDATED'], () => {
+    loadLiveBanners();
+  });
+
   // Rotate slide 1 sub-images every 3.5 seconds
   useEffect(() => {
     const timer = setInterval(() => {
       setActiveSubImageIndex1((prev) => (prev + 1) % subImages1.length);
     }, 3500);
     return () => clearInterval(timer);
-  }, []);
+  }, [subImages1.length]);
 
   // Rotate slide 2 sub-images every 3.5 seconds
   useEffect(() => {
@@ -52,9 +77,131 @@ export default function Hero() {
       setActiveSubImageIndex2((prev) => (prev + 1) % subImages2.length);
     }, 3500);
     return () => clearInterval(timer);
-  }, []);
+  }, [subImages2.length]);
 
-  const slides: Slide[] = [
+  // Determine slide count
+  const slideCount = banners.length > 0 ? banners.length : 2;
+
+  // Autoplay slider logic
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % slideCount);
+    }, 6000);
+    return () => clearInterval(timer);
+  }, [slideCount]);
+
+  // If dynamic database banners exist, render them
+  if (banners.length > 0) {
+    return (
+      <div className="relative w-full h-[320px] sm:h-[420px] md:h-[500px] lg:h-[540px] overflow-hidden bg-[#171017]">
+        {banners.map((banner, index) => (
+          <div
+            key={banner.id}
+            className={`absolute inset-0 w-full h-full flex items-center justify-between transition-all duration-1000 ease-in-out ${
+              index === currentSlide ? 'opacity-100 translate-x-0 z-10' : 'opacity-0 translate-x-full z-0'
+            }`}
+          >
+            {/* Background Image / Color */}
+            <div className="absolute inset-0 bg-gradient-to-r from-neutral-900 via-[#210614] to-black opacity-90 z-0" />
+            {banner.desktopImage && (
+              <div className="absolute inset-0 opacity-20 mix-blend-overlay z-0">
+                <Image src={normalizeImageUrl(banner.desktopImage)} alt={banner.title} fill sizes="100vw" className="object-cover" priority={index === 0} />
+              </div>
+            )}
+
+            {/* Main Slide Content Grid */}
+            <div className="max-w-7xl mx-auto px-4 w-full h-full flex items-center justify-center relative z-20">
+              <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10 items-center">
+                
+                {/* Left side texts */}
+                <div className="hidden lg:block space-y-6 max-w-xl text-left text-white">
+                  {banner.badge && (
+                    <span className="inline-block px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-full bg-[#C21875] text-white border border-[#C21875]/30 font-mono">
+                      {banner.badge}
+                    </span>
+                  )}
+                  <h1 className="text-3xl md:text-5xl font-black tracking-tight leading-tight uppercase font-sans">
+                    {banner.title}
+                  </h1>
+                  {banner.subtitle && (
+                    <p className="text-sm md:text-base opacity-90 leading-relaxed font-light text-gray-300">
+                      {banner.subtitle}
+                    </p>
+                  )}
+                  
+                  <div className="flex flex-wrap gap-4 pt-2">
+                    {banner.buttonText && (
+                      <Link 
+                        href={banner.buttonUrl || '/shop'}
+                        className="bg-[#C21875] hover:bg-[#A31260] text-white px-8 py-3 rounded-full text-xs font-bold uppercase tracking-widest transition-transform hover:scale-105 shadow-lg shrink-0"
+                      >
+                        {banner.buttonText}
+                      </Link>
+                    )}
+                    {banner.secondaryButtonText && (
+                      <Link 
+                        href={banner.secondaryButtonUrl || '/catalog'}
+                        className="bg-transparent border border-[#C21875] hover:bg-[#C21875]/10 text-[#C21875] px-8 py-3 rounded-full text-xs font-bold uppercase tracking-widest transition-colors shrink-0"
+                      >
+                        {banner.secondaryButtonText}
+                      </Link>
+                    )}
+                  </div>
+                </div>
+
+                {/* Right Image on Desktop / Full view on mobile */}
+                <div className="flex justify-center items-center w-full">
+                  {banner.desktopImage ? (
+                    <div className="relative w-full h-[280px] sm:h-[350px] md:h-[420px] lg:h-[480px] rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
+                      <Image 
+                        src={normalizeImageUrl(banner.desktopImage)} 
+                        alt={banner.title} 
+                        fill 
+                        sizes="(max-width: 1024px) 100vw, 50vw" 
+                        className="object-cover rounded-3xl hover:scale-105 transition-transform duration-700" 
+                        priority={index === 0}
+                      />
+                    </div>
+                  ) : (
+                    <div className="relative w-full h-[280px] sm:h-[350px] md:h-[420px] lg:h-[480px] flex items-center justify-center">
+                      <Image 
+                        src="/catagori/WhatsApp Image 2026-08-18 at 12.28.05 AM (1).jpeg" 
+                        alt="LTL Instruments" 
+                        fill 
+                        sizes="(max-width: 1024px) 100vw, 50vw" 
+                        className="object-contain rounded-3xl" 
+                      />
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {/* Dots Indicator */}
+        {banners.length > 1 && (
+          <div className="absolute bottom-3 md:bottom-6 left-0 right-0 z-30 flex justify-center space-x-3">
+            {banners.map((_, idx) => (
+              <button
+                key={idx}
+                onClick={() => setCurrentSlide(idx)}
+                className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                  idx === currentSlide 
+                    ? 'bg-[#C21875] w-7' 
+                    : 'bg-white/40 hover:bg-white/70'
+                }`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Built-in Default Rich Slides
+  const defaultSlides = [
     {
       id: 1,
       badge: 'PREMIUM BEAUTY INSTRUMENTS',
@@ -161,19 +308,11 @@ export default function Hero() {
     }
   ];
 
-  // Autoplay slider logic
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % slides.length);
-    }, 6000);
-    return () => clearInterval(timer);
-  }, [slides.length]);
-
   return (
     <div className="relative w-full h-[320px] sm:h-[420px] md:h-[500px] lg:h-[540px] overflow-hidden">
       
       {/* Slides Container */}
-      {slides.map((slide, index) => (
+      {defaultSlides.map((slide, index) => (
         <div
           key={slide.id}
           className={`absolute inset-0 w-full h-full flex items-center justify-between transition-all duration-1000 ease-in-out ${
@@ -215,7 +354,7 @@ export default function Hero() {
                 </div>
               </div>
 
-              {/* Product Images - FULL WIDTH ON MOBILE (Only pics shown on mobile) */}
+              {/* Product Images - FULL WIDTH ON MOBILE */}
               <div className="flex justify-center items-center w-full">
                 <Link href={slide.primaryBtnUrl} className="block w-full cursor-pointer">
                   {slide.imageSVG}
@@ -229,7 +368,7 @@ export default function Hero() {
 
       {/* Dots Indicator Overlay */}
       <div className="absolute bottom-3 md:bottom-6 left-0 right-0 z-30 flex justify-center space-x-3">
-        {slides.map((_, idx) => (
+        {defaultSlides.map((_, idx) => (
           <button
             key={idx}
             onClick={() => setCurrentSlide(idx)}

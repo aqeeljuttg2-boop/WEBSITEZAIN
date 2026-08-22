@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import db from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import { broadcastRealtimeEvent } from '@/lib/realtime';
+import memoryCache from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -63,6 +66,23 @@ export async function PUT(
       }
     });
 
+    memoryCache.invalidateTag('menus');
+    try {
+      revalidatePath('/', 'layout');
+    } catch {}
+
+    try {
+      broadcastRealtimeEvent({
+        type: 'MENU_UPDATED',
+        title: `Menu Item Updated (${updated.title})`,
+        message: 'Navbar changes live synced',
+        data: updated,
+        source: 'admin'
+      });
+    } catch (err) {
+      console.warn('Realtime broadcast error:', err);
+    }
+
     return NextResponse.json({ success: true, menuItem: updated, message: 'Menu item updated!' }, { status: 200 });
   } catch (error: any) {
     console.error('API PUT Menu Error:', error);
@@ -87,6 +107,23 @@ export async function DELETE(
     }
 
     await db.menuItem.delete({ where: { id } });
+
+    memoryCache.invalidateTag('menus');
+    try {
+      revalidatePath('/', 'layout');
+    } catch {}
+
+    try {
+      broadcastRealtimeEvent({
+        type: 'MENU_UPDATED',
+        title: 'Menu Item Deleted',
+        message: 'A navigation item was removed',
+        source: 'admin'
+      });
+    } catch (err) {
+      console.warn('Realtime broadcast error:', err);
+    }
+
     return NextResponse.json({ success: true, message: 'Menu item deleted' }, { status: 200 });
   } catch (error: any) {
     console.error('API DELETE Menu Error:', error);

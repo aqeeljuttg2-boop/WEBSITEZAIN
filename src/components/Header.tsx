@@ -10,6 +10,7 @@ import {
   ChevronDown, LogOut, CheckCircle, ExternalLink, ChevronRight, Layers
 } from 'lucide-react';
 import { useRealtime } from '@/context/RealtimeContext';
+import { getProductImage } from '@/lib/imageResolver';
 
 interface NavCategory {
   id: string;
@@ -240,7 +241,7 @@ export default function Header() {
               <div className="absolute left-0 right-0 mt-2 bg-white border border-gray-200 rounded-2xl shadow-2xl overflow-hidden z-50">
                 <div className="py-1">
                   {autocompleteResults.map((product) => {
-                    const firstImg = product.images ? product.images.split(',')[0] : '';
+                    const firstImg = getProductImage(product);
                     return (
                       <button
                         key={product.id}
@@ -261,12 +262,16 @@ export default function Header() {
                           </div>
                           <div>
                             <p className="text-xs font-bold text-gray-800 line-clamp-1">{product.name}</p>
-                            <p className="text-[10px] text-gray-400 font-mono">{product.productCode} • {product.category?.name || 'Instrument'}</p>
+                            <p className="text-[10px] text-gray-400 font-mono">
+                              {product.productCode || product.sku}
+                            </p>
                           </div>
                         </div>
-                        <span className="text-xs font-bold text-[#C21875] font-mono shrink-0 ml-2">
-                          Rs. {product.singlePrice.toLocaleString()}
-                        </span>
+                        <div className="text-right">
+                          <p className="text-xs font-extrabold text-[#C21875] font-mono">
+                            Rs. {product.singlePrice?.toFixed(0)}
+                          </p>
+                        </div>
                       </button>
                     );
                   })}

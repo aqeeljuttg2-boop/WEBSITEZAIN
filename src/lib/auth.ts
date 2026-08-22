@@ -37,6 +37,9 @@ export function verifyToken(token: string): UserPayload | null {
   }
 }
 
+// In-memory fast user cache to eliminate repeated db queries during rapid operations
+const userCache = new Map<string, { user: any; expiresAt: number }>();
+
 // Get user from cookies (Server Components / Server Actions / Route Handlers)
 export async function getCurrentUser() {
   try {
@@ -47,6 +50,12 @@ export async function getCurrentUser() {
 
     const payload = verifyToken(token);
     if (!payload) return null;
+
+    // Check fast memory cache (valid for 60 seconds)
+    const cached = userCache.get(payload.userId);
+    if (cached && Date.now() < cached.expiresAt) {
+      return cached.user;
+    }
 
     const user = await db.user.findUnique({
       where: { id: payload.userId },
@@ -65,6 +74,13 @@ export async function getCurrentUser() {
         createdAt: true,
       },
     });
+
+    if (user) {
+      userCache.set(payload.userId, {
+        user,
+        expiresAt: Date.now() + 60 * 1000, // 60s cache
+      });
+    }
 
     return user;
   } catch (error) {

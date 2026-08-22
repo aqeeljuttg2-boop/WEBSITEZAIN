@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import db from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import { broadcastRealtimeEvent } from '@/lib/realtime';
+import memoryCache from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -81,6 +84,24 @@ export async function PUT(
       }
     });
 
+    memoryCache.invalidateTag(['brands', 'products']);
+    try {
+      revalidatePath('/');
+      revalidatePath('/shop');
+    } catch {}
+
+    try {
+      broadcastRealtimeEvent({
+        type: 'BRAND_UPDATED',
+        title: `Brand Updated (${updated.name})`,
+        message: 'Brand details updated live',
+        data: updated,
+        source: 'admin'
+      });
+    } catch (err) {
+      console.warn('Realtime broadcast error:', err);
+    }
+
     return NextResponse.json({ success: true, brand: updated, message: 'Brand updated successfully!' }, { status: 200 });
   } catch (error: any) {
     console.error('API PUT Brand Error:', error);
@@ -119,6 +140,12 @@ export async function DELETE(
     });
 
     await db.brand.delete({ where: { id: existing.id } });
+
+    memoryCache.invalidateTag(['brands', 'products']);
+    try {
+      revalidatePath('/');
+      revalidatePath('/shop');
+    } catch {}
 
     return NextResponse.json({ success: true, message: 'Brand deleted successfully' }, { status: 200 });
   } catch (error: any) {

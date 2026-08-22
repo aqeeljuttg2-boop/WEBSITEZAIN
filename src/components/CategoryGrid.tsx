@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ChevronRight } from 'lucide-react';
+import { normalizeImageUrl } from '@/lib/imageResolver';
 
 interface Category {
   id: string;
@@ -95,7 +96,7 @@ export default function CategoryGrid({ categories }: CategoryGridProps) {
               {/* Category Image Container */}
               <div className="w-full h-40 overflow-hidden relative bg-gray-100 shrink-0">
                 <Image 
-                  src={cat.image || categoryImagesMap[cat.slug] || categoryImagesMap[cat.id] || '/catagori/WhatsApp Image 2026-08-18 at 12.28.05 AM (1).jpeg'} 
+                  src={normalizeImageUrl(cat.image || categoryImagesMap[cat.slug] || categoryImagesMap[cat.id])} 
                   alt={cat.name} 
                   fill
                   sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"

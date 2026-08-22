@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import db from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import { broadcastRealtimeEvent } from '@/lib/realtime';
+import memoryCache from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -69,6 +72,24 @@ export async function PUT(
       }
     });
 
+    memoryCache.invalidateTag('pages');
+    try {
+      revalidatePath(`/${updated.slug}`);
+      revalidatePath('/');
+    } catch {}
+
+    try {
+      broadcastRealtimeEvent({
+        type: 'PAGE_UPDATED',
+        title: `Page Updated (${updated.title})`,
+        message: 'Custom page changes synced live',
+        data: updated,
+        source: 'admin'
+      });
+    } catch (err) {
+      console.warn('Realtime broadcast error:', err);
+    }
+
     return NextResponse.json({ success: true, page: updated, message: 'Page updated successfully!' }, { status: 200 });
   } catch (error: any) {
     console.error('API PUT Page Error:', error);
@@ -98,6 +119,13 @@ export async function DELETE(
     if (!existing) return NextResponse.json({ error: 'Page not found' }, { status: 404 });
 
     await db.page.delete({ where: { id: existing.id } });
+
+    memoryCache.invalidateTag('pages');
+    try {
+      revalidatePath(`/${existing.slug}`);
+      revalidatePath('/');
+    } catch {}
+
     return NextResponse.json({ success: true, message: 'Page deleted successfully' }, { status: 200 });
   } catch (error: any) {
     console.error('API DELETE Page Error:', error);
