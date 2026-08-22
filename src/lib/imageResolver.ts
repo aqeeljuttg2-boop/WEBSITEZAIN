@@ -3,18 +3,31 @@
  * Handles uploaded images, relative paths, full URLs, data URLs, and catalog fallbacks.
  */
 
+export const DEFAULT_FALLBACK_IMAGE = '/catagori/WhatsApp Image 2026-08-18 at 12.28.05 AM (1).jpeg';
+
 export function normalizeImageUrl(img: string | null | undefined): string {
   if (!img || typeof img !== 'string') {
-    return '/catagori/WhatsApp Image 2026-08-18 at 12.28.05 AM (1).jpeg';
+    return DEFAULT_FALLBACK_IMAGE;
   }
 
   const trimmed = img.trim();
   if (!trimmed) {
-    return '/catagori/WhatsApp Image 2026-08-18 at 12.28.05 AM (1).jpeg';
+    return DEFAULT_FALLBACK_IMAGE;
   }
 
-  // Base64 data URLs or External HTTP(S) URLs
-  if (trimmed.startsWith('data:') || trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+  // Base64 data URLs: MUST contain valid base64 payload after comma
+  if (trimmed.startsWith('data:')) {
+    const commaIdx = trimmed.indexOf(',');
+    // If it's a valid Data URL with real payload
+    if (commaIdx !== -1 && trimmed.length - commaIdx > 30) {
+      return trimmed;
+    }
+    // Truncated/corrupted header without data -> fallback
+    return DEFAULT_FALLBACK_IMAGE;
+  }
+
+  // External HTTP(S) URLs
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
     return trimmed;
   }
 
@@ -34,7 +47,7 @@ export function normalizeImageUrl(img: string | null | undefined): string {
   }
 
   // If it's a category seed filename
-  if (trimmed.startsWith('WhatsApp Image')) {
+  if (trimmed.startsWith('WhatsApp Image 2026-08-18')) {
     return `/catagori/${trimmed}`;
   }
 
@@ -47,7 +60,7 @@ export function normalizeImageUrl(img: string | null | undefined): string {
  */
 export function getAllProductImages(product: { productCode?: string | null; images?: string | null; id?: string | null } | null | undefined): string[] {
   if (!product) {
-    return ['/catagori/WhatsApp Image 2026-08-18 at 12.28.05 AM (1).jpeg'];
+    return [DEFAULT_FALLBACK_IMAGE];
   }
 
   if (product.images && product.images.trim()) {
@@ -67,7 +80,18 @@ export function getAllProductImages(product: { productCode?: string | null; imag
       list = raw.split(',').map(s => s.trim()).filter(Boolean);
     }
 
-    const validList = list.filter(item => item && item.trim().length > 0).map(normalizeImageUrl);
+    // Filter out corrupted strings like "data:image/jpeg;base64" with no payload
+    const validList = list
+      .map(s => s.trim())
+      .filter(item => {
+        if (!item) return false;
+        if (item.startsWith('data:') && (!item.includes(',') || item.split(',')[1].length < 30)) {
+          return false;
+        }
+        return true;
+      })
+      .map(normalizeImageUrl);
+
     if (validList.length > 0) {
       return validList;
     }
@@ -81,23 +105,34 @@ export function getAllProductImages(product: { productCode?: string | null; imag
  */
 export function getProductImage(product: { productCode?: string | null; images?: string | null; id?: string | null } | null | undefined): string {
   if (!product) {
-    return '/catagori/WhatsApp Image 2026-08-18 at 12.28.05 AM (1).jpeg';
+    return DEFAULT_FALLBACK_IMAGE;
   }
 
   if (product.images && product.images.trim()) {
     let raw = product.images.trim();
+    let firstCandidate = '';
+
     if (raw.startsWith('[')) {
       try {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed) && parsed.length > 0 && parsed[0]) {
-          return normalizeImageUrl(parsed[0]);
+          firstCandidate = parsed[0].trim();
         }
       } catch (_) {}
     }
     
-    const list = raw.split(',').map(s => s.trim()).filter(Boolean);
-    if (list.length > 0 && list[0]) {
-      return normalizeImageUrl(list[0]);
+    if (!firstCandidate) {
+      const list = raw.split(',').map(s => s.trim()).filter(Boolean);
+      if (list.length > 0 && list[0]) {
+        firstCandidate = list[0];
+      }
+    }
+
+    if (firstCandidate) {
+      // Check if not corrupted empty data url
+      if (!firstCandidate.startsWith('data:') || (firstCandidate.includes(',') && firstCandidate.split(',')[1].length > 30)) {
+        return normalizeImageUrl(firstCandidate);
+      }
     }
   }
 
