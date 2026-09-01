@@ -39,9 +39,9 @@ export default async function CatalogPage() {
     {
       title: 'Lash Tweezers Lounge — Official Product Catalog',
       code: 'LTL-CAT-2026',
-      size: '22.3 MB',
+      size: '64.2 MB',
       pages: 'Full Catalog',
-      downloadUrl: '/docs/lash-tweezers-lounge-catalog.pdf',
+      downloadUrl: '/docs/lash-tweezers-lounge-catalog.pdf?v=2',
       fileName: 'Lash_Tweezers_Lounge_Catalog.pdf',
       iconColor: 'text-[#D6B36A]'
     }
