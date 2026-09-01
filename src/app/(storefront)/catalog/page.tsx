@@ -37,11 +37,12 @@ export default async function CatalogPage() {
 
   const pdfCatalogs = [
     {
-      title: 'Lash Tweezers Lounge Black Gold Catalog (v2)',
-      code: 'LTL-CAT-V2',
-      size: '22.2 MB',
-      pages: '56 Pages',
+      title: 'Lash Tweezers Lounge — Official Product Catalog',
+      code: 'LTL-CAT-2026',
+      size: '22.3 MB',
+      pages: 'Full Catalog',
       downloadUrl: '/docs/lash-tweezers-lounge-catalog.pdf',
+      fileName: 'Lash_Tweezers_Lounge_Catalog.pdf',
       iconColor: 'text-[#D6B36A]'
     }
   ];
@@ -61,33 +62,46 @@ export default async function CatalogPage() {
       {/* 2. PDF downloads grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {pdfCatalogs.map((pdf, idx) => (
-          <div key={idx} className="bg-[#1c141c] border border-white/5 p-6 rounded-2xl flex flex-col justify-between hover:border-[#C21875]/35 transition-all duration-300 h-64">
+          <div key={idx} className="bg-[#1c141c] border border-white/5 p-8 rounded-2xl flex flex-col justify-between hover:border-[#C21875]/35 transition-all duration-300">
             <div>
               <div className="flex justify-between items-start mb-4">
-                <FileText size={32} className={pdf.iconColor} />
+                <FileText size={40} className={pdf.iconColor} />
                 <span className="text-[9px] font-mono font-bold bg-[#171017] px-2 py-0.5 rounded border border-white/5 uppercase text-white/40">
                   {pdf.code}
                 </span>
               </div>
-              <h3 className="font-bold text-sm text-white mb-2">{pdf.title}</h3>
-              <p className="text-[10px] text-white/40 font-mono">{pdf.pages} • Size: {pdf.size}</p>
+              <h3 className="font-bold text-base text-white mb-2">{pdf.title}</h3>
+              <p className="text-[10px] text-white/40 font-mono">{pdf.pages} • {pdf.size}</p>
             </div>
-            
-            <div className="pt-4 border-t border-white/5 flex items-center justify-between">
-              <a 
-                href={pdf.downloadUrl} download
-                className="flex items-center space-x-1.5 text-xs font-bold text-[#D6B36A] hover:text-white transition-colors"
+
+            {/* Big download button */}
+            <div className="pt-6 space-y-3">
+              <a
+                href={pdf.downloadUrl}
+                download={pdf.fileName}
+                className="w-full flex items-center justify-center space-x-2 bg-[#D6B36A] hover:bg-[#c4a05e] text-black font-bold text-xs uppercase tracking-widest py-3.5 rounded-xl transition-all"
               >
-                <Download size={13} />
-                <span>Download PDF</span>
+                <Download size={15} />
+                <span>Download PDF Catalog</span>
               </a>
-              <Link 
-                href="/shop" 
-                className="text-xs text-white/50 hover:text-[#C21875] flex items-center space-x-1 transition-colors"
-              >
-                <span>Browse Online</span>
-                <ExternalLink size={10} />
-              </Link>
+              <div className="border-t border-white/5 pt-3 flex items-center justify-between">
+                <a
+                  href={pdf.downloadUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-white/40 hover:text-white flex items-center space-x-1 transition-colors"
+                >
+                  <Eye size={11} />
+                  <span>Preview in browser</span>
+                </a>
+                <Link
+                  href="/shop"
+                  className="text-xs text-white/40 hover:text-[#C21875] flex items-center space-x-1 transition-colors"
+                >
+                  <span>Browse online</span>
+                  <ExternalLink size={10} />
+                </Link>
+              </div>
             </div>
           </div>
         ))}

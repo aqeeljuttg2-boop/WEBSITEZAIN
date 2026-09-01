@@ -44,3 +44,6 @@ next-env.d.ts
 # backups
 /public/products_original/
 
+# Large binary files — keep in cloud storage, not git
+*.pdf
+
