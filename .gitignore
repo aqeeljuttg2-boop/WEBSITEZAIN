@@ -45,5 +45,5 @@ next-env.d.ts
 /public/products_original/
 
 # Large binary files — keep in cloud storage, not git
-*.pdf
+# *.pdf  (catalog is intentionally tracked in public/docs)
 
