@@ -1,11 +1,14 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import dynamic from "next/dynamic";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 import { RealtimeProvider } from "@/context/RealtimeContext";
-import Chatbot from "@/components/Chatbot";
-import MobileBottomNav from "@/components/MobileBottomNav";
+
+// Lazy-load heavy UI components — deferred until after page hydration
+const Chatbot = dynamic(() => import("@/components/Chatbot"), { ssr: false });
+const MobileBottomNav = dynamic(() => import("@/components/MobileBottomNav"), { ssr: false });
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

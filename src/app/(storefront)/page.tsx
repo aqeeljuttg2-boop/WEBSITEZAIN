@@ -10,8 +10,7 @@ import fs from 'fs';
 import path from 'path';
 import { normalizeImageUrl } from '@/lib/imageResolver';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0; // Live database fetching on every visit
+export const revalidate = 30; // ISR — revalidate every 30 seconds
 
 const fallbackCategoryImages = [
   'WhatsApp Image 2026-08-18 at 12.28.05 AM (1).jpeg',
@@ -103,7 +102,12 @@ export default async function HomePage() {
             { name: { contains: 'Tweezer' } }
           ]
         },
-        include: { category: true, pricingTiers: true },
+        select: {
+          id: true, name: true, slug: true, productCode: true,
+          singlePrice: true, images: true, moq: true, description: true, status: true,
+          category: { select: { id: true, name: true, slug: true } },
+          pricingTiers: { select: { minQuantity: true, maxQuantity: true, price: true } }
+        },
         take: 10,
         orderBy: { createdAt: 'desc' }
       }),
@@ -118,13 +122,23 @@ export default async function HomePage() {
             { name: { contains: 'Scissor' } }
           ]
         },
-        include: { category: true, pricingTiers: true },
+        select: {
+          id: true, name: true, slug: true, productCode: true,
+          singlePrice: true, images: true, moq: true, description: true, status: true,
+          category: { select: { id: true, name: true, slug: true } },
+          pricingTiers: { select: { minQuantity: true, maxQuantity: true, price: true } }
+        },
         take: 10,
         orderBy: { createdAt: 'desc' }
       }),
       db.product.findMany({
         where: { status: 'ACTIVE' },
-        include: { category: true, pricingTiers: true },
+        select: {
+          id: true, name: true, slug: true, productCode: true,
+          singlePrice: true, images: true, moq: true, description: true, status: true,
+          category: { select: { id: true, name: true, slug: true } },
+          pricingTiers: { select: { minQuantity: true, maxQuantity: true, price: true } }
+        },
         take: 60,
         orderBy: { createdAt: 'desc' }
       }),

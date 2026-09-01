@@ -3,8 +3,7 @@ import Link from 'next/link';
 import { Metadata } from 'next';
 import db from '@/lib/db';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+export const revalidate = 3600; // 1 hour ISR — page content rarely changes
 
 export async function generateMetadata(): Promise<Metadata> {
   const page = await db.page.findUnique({ where: { slug: 'privacy' } }).catch(() => null);

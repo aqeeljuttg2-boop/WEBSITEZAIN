@@ -13,6 +13,16 @@ import {
   useStripe,
   useElements,
 } from '@stripe/react-stripe-js';
+import type { Stripe } from '@stripe/stripe-js';
+
+// Stripe.js loaded lazily — only when user reaches the card payment step
+let _stripePromise: Promise<Stripe | null> | null = null;
+function getStripePromise() {
+  if (!_stripePromise) {
+    _stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+  }
+  return _stripePromise;
+}
 import {
   CreditCard,
   Truck,
@@ -420,7 +430,7 @@ export default function CheckoutPage() {
                   Card Payment
                 </h3>
                 <Elements
-                  stripe={stripePromise}
+                  stripe={getStripePromise()}
                   options={{
                     clientSecret,
                     appearance: {
