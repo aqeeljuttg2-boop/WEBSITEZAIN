@@ -41,7 +41,9 @@ export default async function CatalogPage() {
       code: 'LTL-CAT-2026',
       size: '64.2 MB',
       pages: 'Full Catalog',
-      downloadUrl: '/docs/lash-tweezers-lounge-catalog.pdf?v=2',
+      // Google Drive direct download link
+      downloadUrl: 'https://drive.google.com/uc?export=download&id=15GabZayAKYUM9qe2uKjnKluMPAexDaOH',
+      previewUrl: 'https://drive.google.com/file/d/15GabZayAKYUM9qe2uKjnKluMPAexDaOH/view',
       fileName: 'Lash_Tweezers_Lounge_Catalog.pdf',
       iconColor: 'text-[#D6B36A]'
     }
@@ -86,7 +88,7 @@ export default async function CatalogPage() {
               </a>
               <div className="border-t border-white/5 pt-3 flex items-center justify-between">
                 <a
-                  href={pdf.downloadUrl}
+                  href={pdf.previewUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs text-white/40 hover:text-white flex items-center space-x-1 transition-colors"
