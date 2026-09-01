@@ -5,10 +5,7 @@ import dynamic from "next/dynamic";
 import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 import { RealtimeProvider } from "@/context/RealtimeContext";
-
-// Lazy-load heavy UI components — deferred until after page hydration
-const Chatbot = dynamic(() => import("@/components/Chatbot"), { ssr: false });
-const MobileBottomNav = dynamic(() => import("@/components/MobileBottomNav"), { ssr: false });
+import ClientOnlyWidgets from "@/components/ClientOnlyWidgets";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -176,8 +173,7 @@ export default function RootLayout({
           <AuthProvider>
             <CartProvider>
               {children}
-              <Chatbot />
-              <MobileBottomNav />
+              <ClientOnlyWidgets />
             </CartProvider>
           </AuthProvider>
         </RealtimeProvider>
