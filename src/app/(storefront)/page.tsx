@@ -106,7 +106,7 @@ export default async function HomePage() {
           id: true, name: true, slug: true, productCode: true,
           singlePrice: true, images: true, moq: true, description: true, status: true,
           category: { select: { id: true, name: true, slug: true } },
-          pricingTiers: { select: { minQuantity: true, maxQuantity: true, price: true } }
+          pricingTiers: { select: { minQuantity: true, maxQuantity: true, pricePerUnit: true } }
         },
         take: 10,
         orderBy: { createdAt: 'desc' }
@@ -126,7 +126,7 @@ export default async function HomePage() {
           id: true, name: true, slug: true, productCode: true,
           singlePrice: true, images: true, moq: true, description: true, status: true,
           category: { select: { id: true, name: true, slug: true } },
-          pricingTiers: { select: { minQuantity: true, maxQuantity: true, price: true } }
+          pricingTiers: { select: { minQuantity: true, maxQuantity: true, pricePerUnit: true } }
         },
         take: 10,
         orderBy: { createdAt: 'desc' }
@@ -137,7 +137,7 @@ export default async function HomePage() {
           id: true, name: true, slug: true, productCode: true,
           singlePrice: true, images: true, moq: true, description: true, status: true,
           category: { select: { id: true, name: true, slug: true } },
-          pricingTiers: { select: { minQuantity: true, maxQuantity: true, price: true } }
+          pricingTiers: { select: { minQuantity: true, maxQuantity: true, pricePerUnit: true } }
         },
         take: 60,
         orderBy: { createdAt: 'desc' }
