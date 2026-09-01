@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import stripe from '@/lib/stripe';
+import { getStripe } from '@/lib/stripe';
 import db from '@/lib/db';
 
 // POST /api/stripe/create-invoice
@@ -7,6 +7,7 @@ import db from '@/lib/db';
 // The invoice is immediately finalised and an email is sent to the customer.
 export async function POST(request: Request) {
   try {
+    const stripe = getStripe();
     const body = await request.json();
     const { orderId } = body;
 
@@ -14,7 +15,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'orderId is required' }, { status: 400 });
     }
 
-    // Load the full order from the database
     const order = await db.order.findUnique({
       where: { id: orderId },
       include: { items: true },
@@ -57,19 +57,17 @@ export async function POST(request: Request) {
         customerId = customer.id;
       }
 
-      // Persist the customer ID on the order
       await db.order.update({
         where: { id: orderId },
         data: { stripeCustomerId: customerId },
       });
     }
 
-    // Create line items on the customer — each order item becomes an invoice item
+    // Create line items — PKR is zero-decimal in Stripe
     for (const item of order.items) {
-      // PKR is a zero-decimal currency in Stripe — amount is in whole PKR, not paisas
       await stripe.invoiceItems.create({
         customer: customerId,
-        amount: Math.round(item.pricePerUnit * item.quantity), // total for this line
+        amount: Math.round(item.pricePerUnit * item.quantity),
         currency: 'pkr',
         quantity: item.quantity,
         description: `${item.productName} (${item.productCode})`,
@@ -77,7 +75,6 @@ export async function POST(request: Request) {
       });
     }
 
-    // Add shipping as a line item if applicable
     if (order.shippingCost > 0) {
       await stripe.invoiceItems.create({
         customer: customerId,
@@ -89,7 +86,6 @@ export async function POST(request: Request) {
       });
     }
 
-    // Create and finalise the invoice
     const invoice = await stripe.invoices.create({
       customer: customerId,
       collection_method: 'send_invoice',
@@ -107,11 +103,8 @@ export async function POST(request: Request) {
     });
 
     const finalised = await stripe.invoices.finalizeInvoice(invoice.id);
-
-    // Send the invoice email to the customer
     await stripe.invoices.sendInvoice(finalised.id);
 
-    // Persist invoice ID on order
     await db.order.update({
       where: { id: orderId },
       data: { stripeInvoiceId: finalised.id },

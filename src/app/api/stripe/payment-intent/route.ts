@@ -1,18 +1,19 @@
 import { NextResponse } from 'next/server';
-import stripe from '@/lib/stripe';
+import { getStripe } from '@/lib/stripe';
 
 // POST /api/stripe/payment-intent
 // Creates a PaymentIntent for a given cart total and returns the client_secret.
 // Radar rules run automatically on every PaymentIntent.
 export async function POST(request: Request) {
   try {
+    const stripe = getStripe();
     const body = await request.json();
     const {
-      amount,       // total in smallest currency unit (paisas for PKR, cents for USD)
-      currency,     // e.g. "pkr" or "usd"
+      amount,
+      currency,
       customerEmail,
       customerName,
-      orderId,      // optional — attach to metadata for tracing
+      orderId,
     } = body;
 
     if (!amount || !currency) {
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
     }
 
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(amount), // must be integer
+      amount: Math.round(amount),
       currency: currency.toLowerCase(),
       customer: customerId,
       automatic_payment_methods: { enabled: true },

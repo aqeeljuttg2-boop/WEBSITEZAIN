@@ -1,13 +1,14 @@
 import Stripe from 'stripe';
 
-// Lazy singleton — avoids module-level initialization errors in serverless environments
 let _stripe: Stripe | null = null;
 
-function getStripe(): Stripe {
+// Export as function — called at request time, not module load time
+// This prevents "Invalid API Key" errors in serverless/edge environments
+export function getStripe(): Stripe {
   if (!_stripe) {
     const key = process.env.STRIPE_SECRET_KEY;
     if (!key) {
-      throw new Error('STRIPE_SECRET_KEY environment variable is not set');
+      throw new Error('STRIPE_SECRET_KEY is not set. Add it to Vercel Environment Variables.');
     }
     _stripe = new Stripe(key, {
       apiVersion: '2026-08-26.dahlia',
@@ -17,5 +18,3 @@ function getStripe(): Stripe {
   }
   return _stripe;
 }
-
-export default getStripe();
