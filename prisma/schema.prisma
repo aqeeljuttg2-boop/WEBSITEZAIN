@@ -156,6 +156,10 @@ model Order {
   paymentStatus   String      @default("UNPAID") // PAID, UNPAID
   trackingNumber  String?
   notes           String?
+  // Stripe
+  stripeCustomerId      String?
+  stripePaymentIntentId String?
+  stripeInvoiceId       String?
   items           OrderItem[]
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
